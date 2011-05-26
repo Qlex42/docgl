@@ -23,9 +23,12 @@ struct Globals
   docwgl::OpenGLWindow openGLWindow;
   GLint vColorLocation;
   GLint mvpMatrixLocation;
+#ifdef DOCGL4_1
   GLint getColorFunctionLocation;
   GLuint getUniformColorIndex;
   GLuint getUniformColorInvIndex;
+  bool invertColor;
+#endif // !DOCGL4_1
   glm::mat4         projectionMatrix;
   Frame			  	    cameraFrame;
   Frame             objectFrame;
@@ -34,7 +37,6 @@ struct Globals
   bool invertCoordinate;
   bool cullFace;
   bool depthTest;
-  bool invertColor;
 
   Globals()
     : superFormulaVertexBuffer(context)
@@ -43,14 +45,16 @@ struct Globals
     , openGLWindow(context)
     , vColorLocation(-1)
     , mvpMatrixLocation(-1)
+#ifdef DOCGL4_1
     , getColorFunctionLocation(-1)
     , getUniformColorIndex(GL_INVALID_INDEX)
     , getUniformColorInvIndex(GL_INVALID_INDEX)
+    , invertColor(false)
+#endif // !DOCGL4_1
     , nStep(0)
     , invertCoordinate(false)
     , cullFace(false)
     , depthTest(true)
-    , invertColor(false)
     {
       static const SuperFormula3D formula = {1.f, 1.f, 4.f, 12.f, 15.f, 15.f};
       superFormula3d = formula;
@@ -118,6 +122,7 @@ static void SetupRC(Globals& g)
     "void main(void) "
     "  {gl_Position = mvpMatrix * vVertex;}";
 	
+#ifdef DOCGL4_1
   static const GLchar* coloredFragmentShader = 
     "#version 410\n"
     ""
@@ -136,6 +141,13 @@ static void SetupRC(Globals& g)
     ""
     "void main(void) "
     "  {gl_FragColor = getColorFunction();}";
+#else // !DOCGL4_1
+  static const GLchar* coloredFragmentShader = 
+    "uniform vec4 vColor;"
+    ""
+    "void main(void) "
+    "  {gl_FragColor = vColor;}";
+#endif // !DOCGL4_1
 
   static const GLchar* vertexAttributes[] = {"vVertex", NULL};
 
@@ -145,19 +157,16 @@ static void SetupRC(Globals& g)
   jassert(succeed);
   succeed = g.flatColorTransformShader.getUniformVariableLocation("mvpMatrix", g.mvpMatrixLocation).hasSucceed();
   jassert(succeed);
+#ifdef DOCGL4_1
   succeed = g.flatColorTransformShader.getSubroutineUniformLocation(GL_FRAGMENT_SHADER, "getColorFunction", g.getColorFunctionLocation).hasSucceed();
   jassert(succeed);
   succeed = g.flatColorTransformShader.getSubroutineIndex(GL_FRAGMENT_SHADER, "getUniformColor", g.getUniformColorIndex).hasSucceed();
   jassert(succeed);
   succeed = g.flatColorTransformShader.getSubroutineIndex(GL_FRAGMENT_SHADER, "getUniformColorInv", g.getUniformColorInvIndex).hasSucceed();
   jassert(succeed);
+#endif // !DOCGL4_1
   succeed = g.context.getActiveProgramBind().setValue(g.flatColorTransformShader.getId()).hasSucceed();
   jassert(succeed);
-
-  //GLint toto;
-  //succeed = g.flatColorTransformShader.getActiveSubRoutines(GL_FRAGMENT_SHADER, toto).hasSucceed();
-  //succeed = g.flatColorTransformShader.getActiveSubRoutineUniformLocations(GL_FRAGMENT_SHADER, toto).hasSucceed();
-  //succeed = g.flatColorTransformShader.getActiveSubRoutineUniforms(GL_FRAGMENT_SHADER, toto).hasSucceed();
 }
 
 static void ShutdownRC(Globals& g)
@@ -201,9 +210,11 @@ static void RenderScene(Globals& g)
     succeed = g.flatColorTransformShader.setUniformValue(g.vColorLocation, 4, 1, vBlack).hasSucceed();
     jassert(succeed);
 
+#ifdef DOCGL4_1
     // last thing to do with flatColorTransformShader
     succeed = g.context.loadUniformSubroutines(GL_FRAGMENT_SHADER, 1, g.invertColor ? &g.getUniformColorInvIndex : &g.getUniformColorIndex).hasSucceed();
     jassert(succeed);
+#endif // !DOCGL4_1
 
     succeed = g.superFormulaVertexArray.draw(primitive, 0, superFormulaNumVertices).hasSucceed();
     jassert(succeed);
@@ -214,9 +225,11 @@ static void RenderScene(Globals& g)
     succeed = g.flatColorTransformShader.setUniformValue(g.vColorLocation, 4, 1, vGreen).hasSucceed();
     jassert(succeed);
 
+#ifdef DOCGL4_1
     // last thing to do with flatColorTransformShader
     succeed = g.context.loadUniformSubroutines(GL_FRAGMENT_SHADER, 1, g.invertColor ? &g.getUniformColorInvIndex : &g.getUniformColorIndex).hasSucceed();
     jassert(succeed);
+#endif // !DOCGL4_1
 
     succeed = g.superFormulaVertexArray.draw(primitive, 0, superFormulaNumVertices).hasSucceed();
     jassert(succeed);
@@ -229,9 +242,11 @@ static void RenderScene(Globals& g)
     succeed = g.flatColorTransformShader.setUniformValue(g.vColorLocation, 4, 1, vBlack).hasSucceed();
     jassert(succeed);
 
+#ifdef DOCGL4_1
     // last thing to do with flatColorTransformShader
     succeed = g.context.loadUniformSubroutines(GL_FRAGMENT_SHADER, 1, g.invertColor ? &g.getUniformColorInvIndex : &g.getUniformColorIndex).hasSucceed();
     jassert(succeed);
+#endif // !DOCGL4_1
 
     succeed = g.superFormulaVertexArray.draw(GL_LINE_STRIP, 0, superFormulaNumVertices).hasSucceed();
     jassert(succeed);
@@ -261,8 +276,10 @@ static void KeyPressFunc(Globals& g, unsigned char key)
     g.cullFace = !g.cullFace;
   if (key == VK_F4)
     g.depthTest = !g.depthTest;
+#ifdef DOCGL4_1
   if (key == VK_F5)
     g.invertColor = !g.invertColor;
+#endif // !DOCG4_1
   if(key == VK_UP)
 	  g.objectFrame.rotateWorld(-5.0f, 1.0f, 0.0f, 0.0f);
   if(key == VK_DOWN)
@@ -387,8 +404,13 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
     0                          // NULL termination
   }; 
   const int contextAttributes[] = {
+#ifdef DOCGL4_1
     WGL_CONTEXT_MAJOR_VERSION_ARB,  4,
     WGL_CONTEXT_MINOR_VERSION_ARB,  1,
+#else // !DOCGL4_1
+    WGL_CONTEXT_MAJOR_VERSION_ARB,  3,
+    WGL_CONTEXT_MINOR_VERSION_ARB,  3,
+#endif // !DOCGL4_1
     WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
     //WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
     0};
@@ -405,6 +427,7 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
     extendedWindowStyle, pixelFormatAttributes, contextAttributes))
   {
     printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
+    jassertfalse;
     g.openGLWindow.destroy();
     return 2;
   }
@@ -418,8 +441,11 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
     fprintf(stderr, "GLContext initialize error\n");
     return 2;
   }
+
+#ifdef DOCGL4_1
   printf("max subroutines per shader stage: %u\n", g.context.getMaxSubRoutines());
   printf("max subroutines uniform locations per stage: %u\n", g.context.getMaxSubRoutinesUniformLocation());
+#endif // !DOCGL4_1
 
   printf("HELP:\n");
   printf("[A]/[Q] +-a\n");
@@ -432,7 +458,9 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
   printf("[F2] cicle orientations\n");
   printf("[F3] cull face on/off\n");
   printf("[F4] depth test on/off\n");
+#ifdef DOCGL4_1
   printf("[F5] invert color on/off\n");
+#endif // !DOCGL4_1
   printf("[ESC] exit\n");
 
   SetupRC(g);

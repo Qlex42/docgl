@@ -52,12 +52,24 @@
 # endif // !linux
 
 # if defined(DEBUG) || defined(_DEBUG)
-#  ifndef jassert
-#   define jassert(X) {if (!(X)) __asm int 3}
-#  endif // !jassert
 #  ifndef jassertfalse 
-#   define jassertfalse jassert(false)
-#  endif jassertfalse
+#   ifdef WIN32
+#    ifdef _MSC_VER
+#     define jassertfalse __debugbreak()
+#    elif __GNUC__
+#     define jassertfalse asm("int $3");
+#    else  // !_MSC_VER
+#     define jassertfalse __asm int 3
+#    endif // !_MSC_VER
+#   elif __APPLE__
+#     define jassertfalse Debugger();
+#   elif JUCE_LINUX
+#     define jassertfalse kill (0, SIGTRAP);
+#   endif // !WIN32
+#  endif // jassertfalse
+#  ifndef jassert
+#   define jassert(X) {if (!(X)) jassertfalse;}
+#  endif // !jassert
 # else // !DEBUG
 #  define jassert(X)
 #  define jassertfalse 

@@ -1,11 +1,22 @@
+# --------------------------------- . ---------------------------------------- #
+# Filename : CMakeList.txt          | DOCGL sample CMake Entry point           #
+# Author   : Alexandre Buge         |                                          #
+# Started  : 26/05/2011 14:00       |                                          #
+# --------------------------------- . ---------------------------------------- #
+
 cmake_minimum_required(VERSION 2.6)
 
 PROJECT(docgl CXX C)
 
-OPTION(DOCGL_OPTION_MULTICONTEXT "MultiContext" OFF)
-IF (DOCGL_OPTION_MULTICONTEXT)
+OPTION(DOCGL_MULTICONTEXT "MultiContext" OFF)
+IF (DOCGL_MULTICONTEXT)
   ADD_DEFINITIONS(-DGLEW_MX)
-ENDIF (DOCGL_OPTION_MULTICONTEXT)
+ENDIF (DOCGL_MULTICONTEXT)
+
+OPTION(DOCGL4_1 "OpenGL 4.1 Sample" OFF)
+IF (DOCGL4_1)
+  ADD_DEFINITIONS(-DDOCGL4_1)
+ENDIF (DOCGL4_1)
 
 SET (CMAKE_BUILD_TYPE Debug)
 
@@ -26,10 +37,10 @@ ELSE (WIN32)
 ENDIF(WIN32)
 
 IF (MSVC)
-  OPTION(DOCGL_OPTION_DEBUG_COMPATIBILE_WITH_PUFIRY "Debug Purify compatibility" OFF)
+  OPTION(DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY "Debug Purify compatibility" OFF)
 ENDIF (MSVC)
 
-IF (DOCGL_OPTION_DEBUG_COMPATIBILE_WITH_PUFIRY)
+IF (DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY)
   #do not forgot to add /allow_setwindowshook to Purify Files Additional options.
   STRING(REPLACE "INCREMENTAL:YES" "INCREMENTAL:NO" replacementFlags ${CMAKE_EXE_LINKER_FLAGS_DEBUG})
   SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "/INCREMENTAL:NO ${replacementFlags}")
@@ -41,7 +52,7 @@ IF (DOCGL_OPTION_DEBUG_COMPATIBILE_WITH_PUFIRY)
   
   STRING(REPLACE "/RTC1" "" replacementFlags ${CMAKE_CXX_FLAGS_DEBUG})
   SET(CMAKE_CXX_FLAGS_DEBUG "${replacementFlags}")
-ENDIF (DOCGL_OPTION_DEBUG_COMPATIBILE_WITH_PUFIRY)
+ENDIF (DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY)
 
 INCLUDE_DIRECTORIES(
   ${EXTERN_PATH}/include
@@ -105,7 +116,6 @@ SET(GLEW_SOURCES
   extern/src/glew.c
 )
 
-
 SET(DOCGL_SOURCES
   Docgl.h
   Docwgl.h
@@ -156,13 +166,11 @@ MACRO(ADD_APPLICATION NAME LABEL) #SOURCES
     ENDIF(UNIX)
   ENDIF(WIN32)
   SET_TARGET_PROPERTIES(${NAME} PROPERTIES
-    PROJECT_LABEL ${LABEL} # todo: string concat "EXE " + ${LABEL}
+    PROJECT_LABEL ${LABEL}
   )
   TARGET_LINK_LIBRARIES(${NAME} opengl32)
 
 ENDMACRO(ADD_APPLICATION)
-
-SET (WIN32_EXECUTABLE FALSE)
 
 ADD_APPLICATION(docglSample "docgl" ${DOCGL_SAMPLES_SOURCES})
 
