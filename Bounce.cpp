@@ -1,4 +1,8 @@
-// Bounce a Block around the screen
+/* -------------------------------- . ---------------------------------------- .
+| Filename : Bounce.cpp             | DOCGL3.3 sample file                     |
+| Author   : Alexandre Buge         |                                          |
+| Started  : 25/01/2011 10:09       |                                          |
+` --------------------------------- . --------------------------------------- */
 #include "Tools.h"
 #include "Docwgl.h"
 

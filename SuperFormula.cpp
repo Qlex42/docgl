@@ -1,3 +1,9 @@
+/* -------------------------------- . ---------------------------------------- .
+| Filename : SuperFormula.cpp       | DOCGL3.3 sample file                     |
+| Author   : Alexandre Buge         |                                          |
+| Started  : 25/01/2011 10:09       |                                          |
+` --------------------------------- . --------------------------------------- */
+
 # define  _USE_MATH_DEFINES
 # include "Tools.h"
 # include "Docgl.h"
