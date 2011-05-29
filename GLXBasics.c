@@ -3,6 +3,7 @@
 // Draw eyeballs
 // OpenGL SuperBible, 5th Edition
 // Nick Haemel
+// Modified by Alexandre Buge (Add errors checking and fix memory leak... wip).
 
 #include <GL/glew.h>
 #include <GL/glxew.h>
@@ -14,7 +15,7 @@
 #define PI 3.14159265
 
 // Store all system info in one place
-typedef struct RenderContextRec
+typedef struct
 {
     GLXContext ctx;
     Display *dpy;
@@ -28,16 +29,16 @@ typedef struct RenderContextRec
 
 void EarlyInitGLXfnPointers()
 {
-
-    glGenVertexArraysAPPLE = (void(*)(GLsizei, const GLuint*))glXGetProcAddressARB((GLubyte*)"glGenVertexArrays");
-    glBindVertexArrayAPPLE = (void(*)(const GLuint))glXGetProcAddressARB((GLubyte*)"glBindVertexArray");
-    glDeleteVertexArraysAPPLE = (void(*)(GLsizei, const GLuint*))glXGetProcAddressARB((GLubyte*)"glGenVertexArrays");
- glXCreateContextAttribsARB = (GLXContext(*)(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list))glXGetProcAddressARB((GLubyte*)"glXCreateContextAttribsARB");
- glXChooseFBConfig = (GLXFBConfig*(*)(Display *dpy, int screen, const int *attrib_list, int *nelements))glXGetProcAddressARB((GLubyte*)"glXChooseFBConfig");
- glXGetVisualFromFBConfig = (XVisualInfo*(*)(Display *dpy, GLXFBConfig config))glXGetProcAddressARB((GLubyte*)"glXGetVisualFromFBConfig");
+  // TODO do this only on time with static init.
+  glGenVertexArraysAPPLE = (void(*)(GLsizei, const GLuint*))glXGetProcAddressARB((GLubyte*)"glGenVertexArrays");
+  glBindVertexArrayAPPLE = (void(*)(const GLuint))glXGetProcAddressARB((GLubyte*)"glBindVertexArray");
+  glDeleteVertexArraysAPPLE = (void(*)(GLsizei, const GLuint*))glXGetProcAddressARB((GLubyte*)"glGenVertexArrays");
+  glXCreateContextAttribsARB = (GLXContext(*)(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list))glXGetProcAddressARB((GLubyte*)"glXCreateContextAttribsARB");
+  glXChooseFBConfig = (GLXFBConfig*(*)(Display *dpy, int screen, const int *attrib_list, int *nelements))glXGetProcAddressARB((GLubyte*)"glXChooseFBConfig");
+  glXGetVisualFromFBConfig = (XVisualInfo*(*)(Display *dpy, GLXFBConfig config))glXGetProcAddressARB((GLubyte*)"glXGetVisualFromFBConfig");
 }
 
-void CreateWindow(RenderContext *rcx)
+Bool CreateWindow(RenderContext *rcx, const char* display_name)
 {
     XSetWindowAttributes winAttribs;
     GLint winmask;
@@ -46,7 +47,8 @@ void CreateWindow(RenderContext *rcx)
     XVisualInfo *visualInfo;
     GLXFBConfig *fbConfigs;
     int numConfigs = 0;
-    static int fbAttribs[] = {
+    // TODO expose this to function parameters
+    static const int fbAttribs[] = {
                     GLX_RENDER_TYPE,   GLX_RGBA_BIT,
                     GLX_X_RENDERABLE,  True,
                     GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -59,58 +61,87 @@ void CreateWindow(RenderContext *rcx)
     EarlyInitGLXfnPointers();
 
     // Tell X we are going to use the display
-    rcx->dpy = XOpenDisplay(NULL);
-
+    rcx->dpy = XOpenDisplay(display_name);
+    if (!rcx->dpy)
+    {
+      fprintf(stderr, "ERROR: XOpenDisplay(%s) failure\n", display_name);
+      return False;
+    }
     // Get Version info
-    glXQueryVersion(rcx->dpy, &nMajorVer, &nMinorVer);
-    printf("Supported GLX version - %d.%d\n", nMajorVer, nMinorVer);   
-
+    if (!glXQueryVersion(rcx->dpy, &nMajorVer, &nMinorVer))
+    {
+      XCloseDisplay(rcx->dpy);
+      return False;
+    }
     if(nMajorVer == 1 && nMinorVer < 2)
     {
-        printf("ERROR: GLX 1.2 or greater is necessary\n");
-        XCloseDisplay(rcx->dpy);
-        exit(0);
+      fprintf(stderr, "ERROR: GLX 1.2 or greater is necessary\n");
+      XCloseDisplay(rcx->dpy);
+      return False;
     }
     // Get a new fb config that meets our attrib requirements
+    // TODO let caller decide if whe need to use DefaultScreen or not.
     fbConfigs = glXChooseFBConfig(rcx->dpy, DefaultScreen(rcx->dpy), fbAttribs, &numConfigs);
+    if (!fbConfigs)
+    {
+      fprintf(stderr, "ERROR: glXChooseFBConfig failure\n");
+      XCloseDisplay(rcx->dpy);
+      return False;
+    }
+    // Get visual info from best config.
     visualInfo = glXGetVisualFromFBConfig(rcx->dpy, fbConfigs[0]);
-
+    if (!visualInfo)
+    {
+      XFree(fbConfigs);
+      fprintf(stderr, "ERROR: glXGetVisualFromFBConfig failure\n");
+      XCloseDisplay(rcx->dpy);
+      return False;
+    }
     // Now create an X window
-    winAttribs.event_mask = ExposureMask | VisibilityChangeMask | 
-                            KeyPressMask | PointerMotionMask    |
-                            StructureNotifyMask ;
-
-    winAttribs.border_pixel = 0;
-    winAttribs.bit_gravity = StaticGravity;
+    // TODO use XSetErrorHandler to manage XCreateColormap errors.
     winAttribs.colormap = XCreateColormap(rcx->dpy, 
                                           RootWindow(rcx->dpy, visualInfo->screen), 
                                           visualInfo->visual, AllocNone);
+    // TODO expose all configurable attribute to function parameters
+    winAttribs.event_mask = ExposureMask | VisibilityChangeMask | 
+                            KeyPressMask | PointerMotionMask    |
+                            StructureNotifyMask;
+
+    winAttribs.border_pixel = 0;
+    winAttribs.bit_gravity = StaticGravity;
     winmask = CWBorderPixel | CWBitGravity | CWEventMask| CWColormap;
 
+    // TODO use XSetErrorHandler to manage XCreateColormap errors.
     rcx->win = XCreateWindow(rcx->dpy, DefaultRootWindow(rcx->dpy), 20, 20,
                  rcx->nWinWidth, rcx->nWinHeight, 0, 
                              visualInfo->depth, InputOutput,
                  visualInfo->visual, winmask, &winAttribs);
+    XFree(visualInfo);
 
     XMapWindow(rcx->dpy, rcx->win);
 
     // Also create a new GL context for rendering
+    // ALEX: understand why 3.3 do not work with GTX295/Ubuntu32 11.04
+    // read http://www.opengl.org/registry/specs/ARB/glx_create_context.txt
     GLint attribs[] = {
       GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-      GLX_CONTEXT_MINOR_VERSION_ARB, 1, // ALEX: do not understand why 3 do not work with GTX295
+      GLX_CONTEXT_MINOR_VERSION_ARB, 1, 
       0 };
     rcx->ctx = glXCreateContextAttribsARB(rcx->dpy, fbConfigs[0], 0, True, attribs);
+    XFree(fbConfigs);
     glXMakeCurrent(rcx->dpy, rcx->win, rcx->ctx);
 
     GLenum err = glewInit();
     if (GLEW_OK != err)
     {
         /* Problem: glewInit failed, something is seriously wrong. */
-        fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+      fprintf(stderr, "Error: %s\n", glewGetErrorString(err)); 
+      glXMakeCurrent(rcx->dpy, None, NULL);
+      XDestroyWindow(rcx->dpy, rcx->win);
+      XCloseDisplay(rcx->dpy);
+      return False;
     } 
-
-    const GLubyte *s = glGetString(GL_VERSION);
-    printf("GL Version = %s\n", s);
+    return True;
 }
 
 void SetupGLState(RenderContext *rcx)
@@ -251,17 +282,10 @@ void Draw(RenderContext *rcx)
 
 void Cleanup(RenderContext *rcx)
 {
-    // Unbind the context before deleting
     glXMakeCurrent(rcx->dpy, None, NULL);
-
     glXDestroyContext(rcx->dpy, rcx->ctx);
-    rcx->ctx = NULL;
-
     XDestroyWindow(rcx->dpy, rcx->win);
-    rcx->win = (Window)NULL;
-
     XCloseDisplay(rcx->dpy);
-    rcx->dpy = 0;
 }
 
 int main()
@@ -278,14 +302,20 @@ int main()
     rcx.nMousePosY = 0;
 
     // Setup X window and GLX context
-    CreateWindow(&rcx);
+    printf("true : %i false : %i\n", True, False);
+    if (!CreateWindow(&rcx, NULL))
+    {
+      printf("Error: could not create window.\n");
+      return 1;
+    }
+    printf("GL Version = %s\n", glGetString(GL_VERSION));
     SetupGLState(&rcx);
 
     // Draw the first frame before checking for messages
     Draw(&rcx);
 
     // Execute loop the whole time the app runs
-    for(;;)
+    for (;;)
     {
         XEvent newEvent;
         XWindowAttributes winData;
@@ -293,7 +323,7 @@ int main()
         // Watch for new X events
         XNextEvent(rcx.dpy, &newEvent);
 
-        switch(newEvent.type)
+        switch (newEvent.type)
         {
         case UnmapNotify:
         bWinMapped = False;
