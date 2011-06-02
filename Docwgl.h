@@ -12,10 +12,25 @@
 namespace docwgl
 {
 
+/**
+** OpenGL Window message callback class.
+** All callback function is called in the dispatching thread with current window OpenGL context.
+*/
+class OpenGLWindowCallback
+{
+public:
+  virtual ~OpenGLWindowCallback() {}
+  virtual void draw() {}
+  virtual void keyPressed(unsigned char key) {}
+  virtual void resized(int width, int height) {}
+  virtual void closed() {}
+};
+
 struct OpenGLWindow
 {
   /**
   ** Create an OpenGL window this specified OpenGL context and pixel format.
+  ** @param windowCallback is the class who interpret window message.
   ** @param className specifies the window class name. The class name can be any name registered with registerOpenGLWindowClass.
   ** @param bounds is the dimension of the windows in the desktop (take care of location for choosing good GPU)
   ** @param style is the window style. For a list of possible values, see http://msdn.microsoft.com/en-us/library/ms632600.aspx
@@ -31,11 +46,13 @@ struct OpenGLWindow
   ** @return TRUE on succeed. Call OpenGLWindow::destroy for freeing required memory. 
   **   Else return FALSE. Call GetLastError to get extended error information.
   */
-  BOOL create(LPCTSTR className, const RECT& bounds, DWORD style, DWORD extentedStyle, 
+  BOOL create(OpenGLWindowCallback& windowCallback,
+              LPCTSTR className, const RECT& bounds, DWORD style, DWORD extentedStyle, 
               const int* pixelFormatAttributes, const int* contextAttributes,
               HGLRC shareContext = NULL, LPCTSTR caption = NULL, 
               HINSTANCE module = NULL, HWND parentWindow = NULL, HMENU menu = NULL)
   {
+    this->windowCallback = &windowCallback;
     if (extentedStyle & (WS_EX_COMPOSITED | WS_EX_LAYERED))
       {SetLastError(ERROR_INVALID_FLAGS); return FALSE;} // conflict flags with Owner DC
     
@@ -170,6 +187,9 @@ struct OpenGLWindow
     // WARNING: some WNDPROC calls are done before binding OpenGL context anyway.
     if (style & WS_VISIBLE)
       ShowWindow(hWnd, SW_SHOW);
+    SetLastError(0);
+    SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)this);
+    jassert(GetLastError() == 0);
     return TRUE;
   }
 
@@ -202,7 +222,7 @@ struct OpenGLWindow
     {return SwapBuffers(hDC);}
 
   OpenGLWindow(docgl::GLContext& context)
-    : context(context), hWnd(NULL), hDC(NULL), hGLRC(NULL) {}
+    : context(context), hWnd(NULL), hDC(NULL), hGLRC(NULL), windowCallback(NULL) {}
 
 # ifdef GLEW_MX
   WGLEWContext wglewContext;
@@ -213,20 +233,72 @@ struct OpenGLWindow
     {return context.glewGetContext();}
 # endif  //GLEW_MX
 
+  static OpenGLWindow* getOpenGLWindow(HWND hWnd)
+    {return reinterpret_cast<OpenGLWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));}
+
   docgl::GLContext& context;
   HWND         hWnd;
   HDC          hDC;
   HGLRC        hGLRC;
+  OpenGLWindowCallback* windowCallback;
 }; // struct OpenGLWindow
 
 //////////////////////////////// TOOLS ////////////////////////////////////////
+
+
+/** 
+** Internal callback functions to handle all window functions registred by registerOpenGLWindowClass.
+** Take care that some call are for dummy test windows and before OpenGL init.
+** Must never be explicitly call.
+** @param Handle For This Window.
+** @param uMsg Message For This Window.
+** @param wParam Additional Message Information.
+** @param lParam Additional Message Information.
+** @return specific value depending on uMsg.
+*/
+static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wParam, LPARAM	lParam)
+{
+  switch(uMsg)
+  {
+  case WM_ERASEBKGND:
+    return 0; // http://www.opengl.org/pipeline/article/vol003_7/ avoid GDI clearing the OpenGL windows background
+  case WM_SIZE:
+    {
+      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      // must not be called before context initializing (durring window creation)
+      if (window && window->windowCallback && window->context.isInitialized()) 
+      {
+        window->windowCallback->resized(LOWORD(lParam), HIWORD(lParam));
+        window->windowCallback->draw();  // redraw on window resize;
+        window->swapBuffers(); // Flush drawing commands
+      }
+    }
+    break;
+  case WM_CLOSE :
+    {
+      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      if (window && window->windowCallback)
+        window->windowCallback->closed();
+    }
+    return 0;
+  case WM_KEYDOWN:
+    {
+      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      if (window && window->windowCallback)
+        window->windowCallback->keyPressed((char)wParam);
+    }
+    return 0;
+  default:
+    break;
+  }
+  // Pass All Unhandled Messages To DefWindowProc
+  return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
 
 /**
 ** Registers a window class for subsequent use in calls to OpenGLWindow::create function.
 ** @param name specifies the window class name. The maximum length is 256.
 ** @param callbackModule is handle to the instance that contains the window procedure.
-** @param messageCallback is a pointer to the window procedure.
-**   Take care that some messageCallback call are for dummy test windows and before OpenGL init.
 ** @param cursor A handle to the class cursor. This must be a handle to a cursor resource.
 **   If this is NULL, an application must explicitly set it whenever the mouse moves into the application's window. 
 ** @param icon is a handle to the class icon. This must be a handle to an icon resource.
@@ -237,7 +309,7 @@ struct OpenGLWindow
 ** @return TRUE on succeed. Call UnregisterClass for freeing class required memory. 
 **   Else return FALSE. Call GetLastError to get extended error information.
 */
-BOOL registerOpenGLWindowClass(LPCTSTR name, HINSTANCE callbackModule, WNDPROC messageCallback, 
+BOOL registerOpenGLWindowClass(LPCTSTR name, HINSTANCE callbackModule, 
                          HCURSOR cursor = NULL, HICON icon = NULL, HICON smallIcon = NULL, 
                          LPCTSTR menuName = NULL, bool haveCloseMenu = true)
 {
@@ -246,7 +318,7 @@ BOOL registerOpenGLWindowClass(LPCTSTR name, HINSTANCE callbackModule, WNDPROC m
   windowClassProperties.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
   if (!haveCloseMenu)
     windowClassProperties.style |= CS_NOCLOSE;
-  windowClassProperties.lpfnWndProc = messageCallback;
+  windowClassProperties.lpfnWndProc = windowMessageProcedure;
   windowClassProperties.cbClsExtra = 0;
   windowClassProperties.cbWndExtra = 0;
   windowClassProperties.hInstance = callbackModule;
@@ -281,6 +353,9 @@ BOOL dispatchNextThreadMessage(BOOL& threadCanLoop)
   }
   return returnValue;
 }
+
+VOID postQuitThreadMessage()
+  {PostQuitMessage(0);}
 
 }; // namespace docwgl
 
