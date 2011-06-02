@@ -25,12 +25,12 @@ typedef struct
   int nMousePosY;
 } RenderContext;
 
-Bool EarlyInitGLXfnPointers()
+Bool EarlyInitinializeGLX()
 {
   static Bool fnPointersInitialized = False;
   if (!fnPointersInitialized)
   {
-    glXCreateContextAttribsARB = 
+    glXCreateContextAttribsARB =
       (GLXContext(*)(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int *attrib_list))
       glXGetProcAddressARB((GLubyte*)"glXCreateContextAttribsARB");
     if (!glXCreateContextAttribsARB)
@@ -59,31 +59,32 @@ Bool EarlyInitGLXfnPointers()
 /**
 ** Create an OpenGL Window.
 ** @param rcx is the in/out OpenGL windows structure.
-** @display_name Specifies the hardware display name, which determines the display and communications domain to be used. 
-   On a POSIX-conformant system, if the display_name is NULL, it defaults to the value of the DISPLAY environment variable. 
-** @param config_attrib_list specifies a list of attribute/value pairs. The last attribute must be None. 
-   (see http://www.opengl.org/sdk/docs/man/xhtml/glXChooseFBConfig.xml)
+** @display_name Specifies the hardware display name, which determines the display and communications domain to be used.
+** On a POSIX-conformant system, if the display_name is NULL, it defaults to the value of the DISPLAY environment variable.
+** @param config_attrib_list specifies a list of attribute/value pairs. The last attribute must be None.
+** (see http://www.opengl.org/sdk/docs/man/xhtml/glXChooseFBConfig.xml)
 ** @param  contex_attrib_list specifies a list of attributes for the context. The list consists of a sequence of <name,value> pairs terminated by the
-   value None (0). If an attribute is not specified, then the default value specified below is used instead.
-   (see http://www.opengl.org/registry/specs/ARB/glx_create_context.txt)
-** @return True on succes else false on error, see stderr for details. 
+** value None (0). If an attribute is not specified, then the default value specified below is used instead.
+** (see http://www.opengl.org/registry/specs/ARB/glx_create_context.txt)
+** @param event_mask set of events that should be saved. (see xlib chapter 10.3 Event Masks)
+** @param share_context is not NULL, then all shareable data (excluding OpenGL texture objects named 0) will be shared.
+** @return True on succes else false on error, see stderr for details.
 */
-Bool CreateWindow(RenderContext *rcx, const char* display_name, const int* config_attrib_list, const int* context_attrib_list)
+Bool CreateWindow(RenderContext *rcx, const char* display_name, const int* config_attrib_list, const int* context_attrib_list, long event_mask, GLXContext share_context)
 {
   XSetWindowAttributes winAttribs;
-  GLint winmask;
-  GLint nMajorVer = 0;
-  GLint nMinorVer = 0;
-  XVisualInfo *visualInfo;
-  GLXFBConfig *fbConfigs;
-  int numConfigs = 0;
+  GLint nMajorVer;
+  GLint nMinorVer;
+  XVisualInfo* visualInfo;
+  GLXFBConfig* fbConfigs;
+  int numConfigs;
 
-  if (!EarlyInitGLXfnPointers())
+  if (!EarlyInitinializeGLX())
   {
     fprintf(stderr, "ERROR: Failed to initialize GLX\n");
     XCloseDisplay(rcx->dpy);
     return False;
-  }  
+  }
   // Tell X we are going to use the display
   rcx->dpy = XOpenDisplay(display_name);
   if (!rcx->dpy)
@@ -91,7 +92,7 @@ Bool CreateWindow(RenderContext *rcx, const char* display_name, const int* confi
     fprintf(stderr, "ERROR: XOpenDisplay(%s) failure\n", display_name);
     return False;
   }
-  // Get Version info
+  // Get GLX Version
   if (!glXQueryVersion(rcx->dpy, &nMajorVer, &nMinorVer))
   {
     fprintf(stderr, "ERROR: glXQueryVersion failure\n");
@@ -124,29 +125,25 @@ Bool CreateWindow(RenderContext *rcx, const char* display_name, const int* confi
   }
   // Now create an X window
   // TODO use XSetErrorHandler to manage XCreateColormap errors.
-  winAttribs.colormap = XCreateColormap(rcx->dpy, 
-                                        RootWindow(rcx->dpy, visualInfo->screen), 
+  winAttribs.colormap = XCreateColormap(rcx->dpy,
+                                        RootWindow(rcx->dpy, visualInfo->screen),
                                         visualInfo->visual, AllocNone);
   // TODO expose all configurable attribute to function parameters
-  winAttribs.event_mask = ExposureMask | VisibilityChangeMask | 
-                          KeyPressMask | PointerMotionMask    |
-                          StructureNotifyMask;
-
-  winAttribs.border_pixel = 0;
+  winAttribs.event_mask = event_mask;
+  winAttribs.border_pixel = 0; // TODO understand why modification have no impact.
   winAttribs.bit_gravity = StaticGravity;
-  winmask = CWBorderPixel | CWBitGravity | CWEventMask| CWColormap;
 
   // TODO use XSetErrorHandler to manage XCreateColormap errors.
-  rcx->win = XCreateWindow(rcx->dpy, DefaultRootWindow(rcx->dpy), 20, 20,
-               rcx->nWinWidth, rcx->nWinHeight, 0, 
-                           visualInfo->depth, InputOutput,
-               visualInfo->visual, winmask, &winAttribs);
+  // TODO understand why x, y and border size have no effect.
+  rcx->win = XCreateWindow(rcx->dpy, DefaultRootWindow(rcx->dpy), 0, 0,
+               rcx->nWinWidth, rcx->nWinHeight, 0, visualInfo->depth, InputOutput,
+               visualInfo->visual, CWBorderPixel | CWBitGravity | CWEventMask| CWColormap, &winAttribs);
   XFree(visualInfo);
   // TODO use XSetErrorHandler to manage XMapWindow errors.
   XMapWindow(rcx->dpy, rcx->win);
 
   // Create a  GL context for rendering
-  rcx->ctx = glXCreateContextAttribsARB(rcx->dpy, fbConfigs[0], 0, True, context_attrib_list);
+  rcx->ctx = glXCreateContextAttribsARB(rcx->dpy, fbConfigs[0], share_context, True, context_attrib_list);
   XFree(fbConfigs);
   if (!rcx->ctx)
   {
@@ -168,12 +165,12 @@ Bool CreateWindow(RenderContext *rcx, const char* display_name, const int* confi
   if (GLEW_OK != err)
   {
       /* Problem: glewInit failed, something is seriously wrong. */
-    fprintf(stderr, "Error: glewInit failure %u: %s\n", err, glewGetErrorString(err)); 
+    fprintf(stderr, "Error: glewInit failure %u: %s\n", err, glewGetErrorString(err));
     glXMakeCurrent(rcx->dpy, None, NULL);
     XDestroyWindow(rcx->dpy, rcx->win);
     XCloseDisplay(rcx->dpy);
     return False;
-  } 
+  }
   return True;
 }
 
@@ -196,7 +193,7 @@ void SetupGLState(RenderContext *rcx)
   glLoadIdentity();
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-      
+
   // Set the frustrum
   glFrustum(fXLeft, fXRight, fYBottom, fYTop, 0.1f, 100.f);
 }
@@ -205,7 +202,7 @@ void DrawCircle()
 {
   float fx = 0.0;
   float fy = 0.0;
-  
+
   int nDegrees = 0;
 
   // Use a triangle fan with 36 tris for the circle
@@ -242,10 +239,10 @@ void Draw(RenderContext *rcx)
 
   // Calculate the length of the vector from the eyeball
   // to the mouse pointer
-  fLtVecMag = sqrt( pow((double)(rcx->nMousePosX - nLtEyePosX), 2.0) + 
+  fLtVecMag = sqrt( pow((double)(rcx->nMousePosX - nLtEyePosX), 2.0) +
                     pow((double)(rcx->nMousePosY - nLtEyePosY), 2.0));
 
-  fRtVecMag =  sqrt( pow((double)(rcx->nMousePosX - nRtEyePosX), 2.0) + 
+  fRtVecMag =  sqrt( pow((double)(rcx->nMousePosX - nRtEyePosX), 2.0) +
                     pow((double)(rcx->nMousePosY - nRtEyePosY), 2.0));
 
   // Clamp the minimum magnatude
@@ -310,15 +307,18 @@ void Draw(RenderContext *rcx)
   glEnd();
 
   // Display rendering
-  glXSwapBuffers(rcx->dpy, rcx->win);    
+  glXSwapBuffers(rcx->dpy, rcx->win);
 }
 
-void Cleanup(RenderContext *rcx)
+Bool Cleanup(RenderContext *rcx)
 {
-  glXMakeCurrent(rcx->dpy, None, NULL);
+  Bool res = True;
+  if (glXMakeCurrent(rcx->dpy, None, NULL))
+    res = False;
   glXDestroyContext(rcx->dpy, rcx->ctx);
   XDestroyWindow(rcx->dpy, rcx->win);
   XCloseDisplay(rcx->dpy);
+  return res;
 }
 
 int main()
@@ -339,8 +339,12 @@ int main()
   // read http://www.opengl.org/registry/specs/ARB/glx_create_context.txt
   static const int context_attrib_list[] = {
     GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-    GLX_CONTEXT_MINOR_VERSION_ARB, 1, 
+    GLX_CONTEXT_MINOR_VERSION_ARB, 1,
     0};
+
+  static const long event_mask = ExposureMask | VisibilityChangeMask |
+                          KeyPressMask | PointerMotionMask    |
+                          StructureNotifyMask;
 
   // Set initial window properties
   rcx.nWinWidth = 400;
@@ -349,7 +353,7 @@ int main()
   rcx.nMousePosY = 0;
 
   // Setup X window and GLX context
-  if (!CreateWindow(&rcx, NULL, config_attrib_list, context_attrib_list))
+  if (!CreateWindow(&rcx, NULL, config_attrib_list, context_attrib_list, event_mask, NULL))
   {
     fprintf(stderr, "Error: could not create window\n");
     return 1;
@@ -368,7 +372,6 @@ int main()
       switch (newEvent.type)
       {
       case UnmapNotify:
-        // WHY it's no called ? Need an explicit call to XUnmapWindow ?
         bWinMapped = False;
         break;
       case MapNotify :
@@ -386,7 +389,10 @@ int main()
         break;
       case KeyPress:
       case DestroyNotify:
+        bWinMapped = False;
         running = False;
+        printf("ending\n");
+        fflush(stdout);
         break;
       }
 
@@ -394,7 +400,8 @@ int main()
         Draw(&rcx);
   }
   Cleanup(&rcx);
-  // TODO: undestand why quitting with window close button send: UnmapNotify problem ?
+  // TODO: To fix close window button, use XChangeProperty(), add the WM_DELETE_WINDOW message to the WM_PROTOCOLS events.
+  // This should avoid following error:
   // XIO:  fatal IO error 11 (Resource temporarily unavailable) on X server ":0"
   //   after 48 requests (48 known processed) with 0 events remaining.
   return 0;

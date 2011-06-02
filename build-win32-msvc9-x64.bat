@@ -1,3 +1,4 @@
+@echo off
 if not exist build mkdir build
 cd build
 if not exist win32-msvc9-x64 mkdir win32-msvc9-x64
