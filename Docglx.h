@@ -10,7 +10,7 @@
 # include <GL/glxew.h>
 # include <cstdio> // TODO REMOVE IO ?
 # include <X11/Xatom.h>
-# include "DocglWindowCallback.h
+# include "DocglWindowCallback.h"
 
 namespace docglx
 {

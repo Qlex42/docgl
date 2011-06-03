@@ -10,7 +10,7 @@
 
 #define PI 3.14159265
 
-class RenderContext : public docglx::OpenGLWindowCallback
+class RenderContext : public OpenWGLWindowCallback
 {
 public:
   void setupGLState()
@@ -207,7 +207,7 @@ int main()
   rcx.resized(400, 200);
 
   // Execute loop the whole time the app runs
-  docglx::EventDispatcher eventDispatcher(&window, 1);
+  docglx::XEventDispatcher eventDispatcher(&window, 1);
   while (rcx.running)
   {
     eventDispatcher.dispatchNextEvent();
