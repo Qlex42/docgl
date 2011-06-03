@@ -5,12 +5,12 @@
 // Nick Haemel
 // Modified by Alexandre Buge (use Docglx, c++ port...).
 
-#include "Docglx.h"
+#include <Docgl/Docglx.h>
 #include <cmath>
 
 #define PI 3.14159265
 
-class RenderContext : public OpenWGLWindowCallback
+class RenderContext : public OpenGLWindowCallback
 {
 public:
   void setupGLState()
@@ -207,7 +207,8 @@ int main()
   rcx.resized(400, 200);
 
   // Execute loop the whole time the app runs
-  docglx::XEventDispatcher eventDispatcher(&window, 1);
+  docglx::OpenGLXWindow* openGLWindowsList = &window;
+  docglx::XEventDispatcher eventDispatcher(&openGLWindowsList, 1);
   while (rcx.running)
   {
     eventDispatcher.dispatchNextEvent();

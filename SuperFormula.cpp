@@ -14,6 +14,11 @@ struct SuperFormula3D
 static const float step = 0.05f;
 enum {superFormulaNumVertices = 7938}; // depends from step
 
+#ifdef linux
+using std::max;
+using std::min;
+#endif // linux
+
 class Globals: public OpenGLWindowCallback
 {
 public:
@@ -333,7 +338,7 @@ int superFormula(const char* szClassName, int x, int y, int width, int height)
 
   if (!window.create(g, x, y, width, height, szClassName))
   {
-    printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
+    printf("Error: Unable to create OpenGL Window.\n");
     jassertfalse;
     return 1;
   }
@@ -370,19 +375,22 @@ int superFormula(const char* szClassName, int x, int y, int width, int height)
   g.SetupRC();
   g.resized(width, height);
 
-
-  EventDispatcher dispatcher(&window, 1);
+  OpenGLWindow* windowsLists = &window;
+  EventDispatcher dispatcher(&windowsLists, 1);
   do
   {
     if (!dispatcher.dispatchNextEvent())
     {
-      g.draw(); // no message to dispatch: render the scene.
-	  	window.swapBuffers(); // Flush drawing commands
+      if (window.isVisible() && !g.wantExit)
+      {
+        g.draw(); // no message to dispatch: render the scene.
+        window.swapBuffers(); // Flush drawing commands
+      }
     }
   }
   while (!g.wantExit);
+  printf("exiting...\n");
   g.ShutdownRC();
-
   window.destroy();
   return 0;
 }

@@ -6,7 +6,7 @@
 #ifndef DOCGLX_H_
 # define DOCGLX_H_
 
-//# include "Docgl.h"
+# include <Docgl/Docgl.h>
 # include <GL/glxew.h>
 # include <cstdio> // TODO REMOVE IO ?
 # include <X11/Xatom.h>
@@ -62,7 +62,7 @@ struct OpenGLXWindow
   ** @param shareContext is not NULL, then all shareable data (excluding OpenGL texture objects named 0) will be shared.
   ** @return True on succes else false on error, see stderr for details.
   */
-  Bool create(OpenWGLWindowCallback& windowCallback, const char* display_name, int width, int height, 
+  Bool create(OpenGLWindowCallback& windowCallback, const char* display_name, int width, int height,
                     const int* pixelFormatAttributes, const int* contextAttributes, GLXContext shareContext)
   {
     this->windowCallback = &windowCallback;
@@ -180,7 +180,7 @@ struct OpenGLXWindow
   /**
   ** Destroy an OpenGL Window created with create() function
   ** @return True on succed else False on error.
-  */ 
+  */
   Bool destroy()
   {
     Bool res = True;
@@ -194,14 +194,14 @@ struct OpenGLXWindow
 
   /**
   ** Swap OpenGL window buffers (ensure double buffering is active)
-  */ 
+  */
   void swapBuffer()
     {glXSwapBuffers(display, window);}
-  
+
   /**
   ** Internal event handler, do not call it directly use XEventDispatcher instead
   ** @param newEvent is the event to interpret.
-  */ 
+  */
   void eventHandler(const XEvent& newEvent)
   {
     XWindowAttributes winData;
@@ -224,7 +224,7 @@ struct OpenGLXWindow
       windowCallback->keyPressed(0 /*TODO compute code*/);
       break;
     case ClientMessage:
-      { 
+      {
         const XClientMessageEvent* const clientMsg = (const XClientMessageEvent*) &newEvent.xclient;
         if (clientMsg->message_type == XInternAtom (display, "WM_PROTOCOLS", 1) && clientMsg->format == 32)
         {
@@ -244,7 +244,7 @@ struct OpenGLXWindow
   Display* display;
   Window window;
   bool mapped;
-  OpenWGLWindowCallback* windowCallback;
+  OpenGLWindowCallback* windowCallback;
 }; // struct OpenWGLWindow
 
 
@@ -256,29 +256,29 @@ public:
   // Event dispatcher initializing
   // @param windowsList is an array of previously created windows with the same Display.
   // @param windowsCount is the window count on the windowsList.
-  XEventDispatcher(OpenGLXWindow* windowsList, size_t windowsCount)
+  XEventDispatcher(OpenGLXWindow** windowsList, size_t windowsCount)
     : windowsList(windowsList), windowsCount(windowsCount)
   {
     if (windowsCount)
-      display = windowsList[0].display;
+      display = windowsList[0]->display;
   }
 
   /**
   ** Dispacth the next process message of from display of the windows list.
-  */ 
+  */
   void dispatchNextEvent()
   {
     XEvent newEvent;
     XNextEvent(display, &newEvent);
     for (size_t i = 0; i < windowsCount; ++i)
-      if (newEvent.xany.window == windowsList[0].window)
+      if (newEvent.xany.window == windowsList[0]->window)
       {
-        windowsList[0].eventHandler(newEvent);
+        windowsList[0]->eventHandler(newEvent);
         break;
       }
-  } 
+  }
 
-  OpenGLXWindow* windowsList;
+  OpenGLXWindow** windowsList;
   size_t windowsCount;
   Display* display;
 };

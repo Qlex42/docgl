@@ -2113,8 +2113,9 @@ public:
   {
     if (constructionState.hasSucceed())
     {
-      const bool succeed = reg.setValue(backupValue).hasSucceed();
+      bool succeed = reg.setValue(backupValue).hasSucceed();
       jassert(succeed);
+      succeed = succeed; // avoid unused value warning on release.
     }
   }
 

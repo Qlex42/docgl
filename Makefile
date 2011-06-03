@@ -1,7 +1,7 @@
 MAIN = GLXBasics
 CC = g++
-GLEW = extern/src/glew
-CPPFLAGS = -Iextern/include -Wall -Wextra
+GLEW = extern/src/GL/glew
+CPPFLAGS = -Iextern/include -Wall
 LIBS = -lX11 -lGL -lm
 
 all : $(MAIN)

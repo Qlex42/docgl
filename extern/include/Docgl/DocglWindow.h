@@ -20,7 +20,7 @@ public:
     this->className = className;
     if(!docwgl::registerOpenWGLWindowClass(className, GetModuleHandle(NULL), LoadCursor(NULL, IDC_ARROW)))
       return false;
-  
+
     static const int pixelFormatAttributes[] = {
       WGL_SUPPORT_OPENGL_ARB, 1, // Must support OGL rendering
       WGL_DRAW_TO_WINDOW_ARB, 1, // pf that can run a window
@@ -28,16 +28,16 @@ public:
       WGL_RED_BITS_ARB,       8, // 8 bits of red precision in window
       WGL_GREEN_BITS_ARB,     8, // 8 bits of green precision in window
       WGL_BLUE_BITS_ARB,      8, // 8 bits of blue precision in window
-      //WGL_ALPHA_BITS_ARB, 8, 
+      //WGL_ALPHA_BITS_ARB, 8,
       //WGL_COLOR_BITS_ARB,     24, // 8 bits of each R, G and B
       WGL_DEPTH_BITS_ARB,     16, // 16 bits of depth precision for window
       WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB, // pf should be RGBA type
       WGL_DOUBLE_BUFFER_ARB,	GL_TRUE, // Double buffered context
       WGL_SWAP_METHOD_ARB,    WGL_SWAP_EXCHANGE_ARB, // double buffer swap (more speed ?)
       WGL_SAMPLE_BUFFERS_ARB, GL_TRUE, // MSAA on
-      WGL_SAMPLES_ARB,        8, // 8x MSAA 
+      WGL_SAMPLES_ARB,        8, // 8x MSAA
       0                          // NULL termination
-    }; 
+    };
     static const int contextAttributes[] = {
   #ifdef DOCGL4_1
       WGL_CONTEXT_MAJOR_VERSION_ARB,  4,
@@ -63,7 +63,7 @@ public:
     AdjustWindowRectEx(&windowRect, windowStyle, FALSE, extendedWindowStyle);
     OffsetRect(&windowRect, clientRect.left - windowRect.left, clientRect.top - windowRect.top);
 
-    if (!window.create(windowCallback, className, windowRect, windowStyle, 
+    if (!window.create(windowCallback, className, windowRect, windowStyle,
       extendedWindowStyle, pixelFormatAttributes, contextAttributes))
     {
       jassertfalse;
@@ -82,7 +82,7 @@ public:
       res = false;
     return res;
   }
-  
+
   bool swapBuffers()
     {return window.swapBuffers() == TRUE ? true : false;}
 
@@ -94,10 +94,9 @@ private:
 class EventDispatcher
 {
 public:
-  EventDispatcher(OpenGLWindow* windowsList, size_t windowsCount)
-    {}
-  
-  /** 
+  EventDispatcher(OpenGLWindow** windowsList, size_t windowsCount) {}
+
+  /**
   ** Dispatch next messages.
   ** @return true if a message was dispatched, false if the message queue is empty.
   */
@@ -113,6 +112,98 @@ public:
 #  ifdef linux
 
 #   include "Docglx.h"
+
+struct OpenGLWindow
+{
+public:
+  OpenGLWindow(docgl::GLContext& context)
+    : window() {}
+  bool create(OpenGLWindowCallback& windowCallback, int x, int y, int width, int height, const char* className)
+  {
+    static const int config_attrib_list[] = {
+                    GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+                    GLX_X_RENDERABLE,  True,
+                    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+                    GLX_DOUBLEBUFFER,  True,
+                    GLX_RED_SIZE,      8,
+                    GLX_BLUE_SIZE,     8,
+                    GLX_GREEN_SIZE,    8,
+                    None};
+    // ALEX: understand why 3.3 do not work with GTX295/Ubuntu32 11.04 (with or without unity window manager)
+    // read http://www.opengl.org/registry/specs/ARB/glx_create_context.txt
+    static const int context_attrib_list[] = {
+      GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+      GLX_CONTEXT_MINOR_VERSION_ARB, 1,
+      0};
+
+    // Setup X window and GLX context
+    if (!window.create(windowCallback, NULL, width, height, config_attrib_list, context_attrib_list, NULL))
+    {
+      fprintf(stderr, "Error: could not create window\n");
+      return 1;
+    }
+    return true;
+  }
+
+  bool destroy()
+    {return window.destroy();}
+
+  bool swapBuffers()
+  {
+    window.swapBuffer();
+    return true;
+  }
+
+  bool isVisible()
+    {return window.mapped;}
+
+  docglx::OpenGLXWindow window;
+private:
+  const char* className;
+};
+
+
+class EventDispatcher
+{
+public:
+  EventDispatcher(OpenGLWindow** windowsList, size_t windowsCount)
+    : eventDispatcher(getInternalWindowList(windowsList, windowsCount), windowsCount) {}
+
+  ~EventDispatcher()
+  {
+    if (internalWindowList)
+      delete [] internalWindowList;
+  }
+
+
+  /**
+  ** Dispatch next messages.
+  ** @return true if a message was dispatched, false if the message queue is empty.
+  */
+  bool dispatchNextEvent()
+  {
+    eventDispatcher.dispatchNextEvent();
+    return false; // return false to enforce unix client drawing.
+  }
+
+private:
+  docglx::OpenGLXWindow** getInternalWindowList(OpenGLWindow** windowsList, size_t windowsCount)
+  {
+    internalWindowList = NULL;
+    if (windowsCount)
+    {
+      internalWindowList = new docglx::OpenGLXWindow*[windowsCount];
+      for (size_t i = 0; i < windowsCount; ++i)
+        internalWindowList[i] = &windowsList[i]->window;
+    }
+    return internalWindowList;
+  }
+
+private:
+  docglx::XEventDispatcher eventDispatcher;
+  docglx::OpenGLXWindow** internalWindowList;
+};
+
 
 #  else  // !linux
 
