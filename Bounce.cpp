@@ -334,7 +334,7 @@ int bounceMain(LPCTSTR szClassName)
   AdjustWindowRectEx(&windowRect, windowStyle, FALSE, extendedWindowStyle);
   OffsetRect(&windowRect, clientRect.left - windowRect.left, clientRect.top - windowRect.top);
 
-  docwgl::OpenGLWindow openGLWindow(g.context);
+  docwgl::OpenWGLWindow openGLWindow(g.context);
   if (!openGLWindow.create(g, szClassName, windowRect, windowStyle, 
     extendedWindowStyle, pixelFormatAttributes, contextAttributes))
   {

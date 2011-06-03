@@ -10,27 +10,12 @@
 # include <GL/glxew.h>
 # include <cstdio> // TODO REMOVE IO ?
 # include <X11/Xatom.h>
+# include "DocglWindowCallback.h
 
 namespace docglx
 {
 
-
-/**
-** OpenGL Window message windowCallback class.
-** All windowCallback function is called in the dispatching thread with current window OpenGL context.
-*/
-class OpenGLWindowCallback
-{
-public:
-  virtual ~OpenGLWindowCallback() {}
-  virtual void draw() {}
-  virtual void keyPressed(unsigned char /* key */) {}
-  virtual void resized(int /* width */, int /* height */) {}
-  virtual void mouseMove(int /* x */ , int /* y */) {}
-  virtual void closed() {}
-};
-
-typedef struct //OpenGLXWindow
+struct OpenGLXWindow
 {
   // internal
   Bool earlyInitinializeGLX()
@@ -77,7 +62,7 @@ typedef struct //OpenGLXWindow
   ** @param shareContext is not NULL, then all shareable data (excluding OpenGL texture objects named 0) will be shared.
   ** @return True on succes else false on error, see stderr for details.
   */
-  Bool create(OpenGLWindowCallback& windowCallback, const char* display_name, int width, int height, 
+  Bool create(OpenWGLWindowCallback& windowCallback, const char* display_name, int width, int height, 
                     const int* pixelFormatAttributes, const int* contextAttributes, GLXContext shareContext)
   {
     this->windowCallback = &windowCallback;
@@ -214,7 +199,7 @@ typedef struct //OpenGLXWindow
     {glXSwapBuffers(display, window);}
   
   /**
-  ** Internal event handler, do not call it directly use EventDispatcher instead
+  ** Internal event handler, do not call it directly use XEventDispatcher instead
   ** @param newEvent is the event to interpret.
   */ 
   void eventHandler(const XEvent& newEvent)
@@ -259,20 +244,19 @@ typedef struct //OpenGLXWindow
   Display* display;
   Window window;
   bool mapped;
-  OpenGLWindowCallback* windowCallback;
-
-} OpenGLXWindow;
+  OpenWGLWindowCallback* windowCallback;
+}; // struct OpenWGLWindow
 
 
 //////////////////////////////// TOOLS ////////////////////////////////////////
 
-class EventDispatcher
+class XEventDispatcher
 {
 public:
   // Event dispatcher initializing
   // @param windowsList is an array of previously created windows with the same Display.
   // @param windowsCount is the window count on the windowsList.
-  EventDispatcher(OpenGLXWindow* windowsList, size_t windowsCount)
+  XEventDispatcher(OpenGLXWindow* windowsList, size_t windowsCount)
     : windowsList(windowsList), windowsCount(windowsCount)
   {
     if (windowsCount)

@@ -7,31 +7,19 @@
 # define DOCWGL_H_
 
 # include "Docgl.h"
+# include "DocglWindowCallback.h"
 # include <gl\wglew.h>
+# include <Windowsx.h>
 
 namespace docwgl
 {
 
-/**
-** OpenGL Window message callback class.
-** All callback function is called in the dispatching thread with current window OpenGL context.
-*/
-class OpenGLWindowCallback
-{
-public:
-  virtual ~OpenGLWindowCallback() {}
-  virtual void draw() {}
-  virtual void keyPressed(unsigned char key) {}
-  virtual void resized(int width, int height) {}
-  virtual void closed() {}
-};
-
-struct OpenGLWindow
+struct OpenWGLWindow
 {
   /**
   ** Create an OpenGL window this specified OpenGL context and pixel format.
   ** @param windowCallback is the class who interpret window message.
-  ** @param className specifies the window class name. The class name can be any name registered with registerOpenGLWindowClass.
+  ** @param className specifies the window class name. The class name can be any name registered with registerOpenWGLWindowClass.
   ** @param bounds is the dimension of the windows in the desktop (take care of location for choosing good GPU)
   ** @param style is the window style. For a list of possible values, see http://msdn.microsoft.com/en-us/library/ms632600.aspx
   ** @param extentedStyle is the extended style. For a list of possible values, see http://msdn.microsoft.com/en-us/library/ff700543.aspx
@@ -43,10 +31,10 @@ struct OpenGLWindow
   ** @param module is an handle to the instance of the module to be associated with the window.
   ** @param parentWindow indentifies a handle to the parent or owner window of the window being created.
   ** @param menu identifies the menu to be used with the window. It can be NULL if the class menu is to be used.
-  ** @return TRUE on succeed. Call OpenGLWindow::destroy for freeing required memory. 
+  ** @return TRUE on succeed. Call OpenWGLWindow::destroy for freeing required memory. 
   **   Else return FALSE. Call GetLastError to get extended error information.
   */
-  BOOL create(OpenGLWindowCallback& windowCallback,
+  BOOL create(OpenWGLWindowCallback& windowCallback,
               LPCTSTR className, const RECT& bounds, DWORD style, DWORD extentedStyle, 
               const int* pixelFormatAttributes, const int* contextAttributes,
               HGLRC shareContext = NULL, LPCTSTR caption = NULL, 
@@ -194,7 +182,7 @@ struct OpenGLWindow
   }
 
   /**
-  ** Destroy an OpenGL Window created with OpenGLWindow::create
+  ** Destroy an OpenGL Window created with OpenWGLWindow::create
   ** @return TRUE on succeed. Else return FALSE. Call GetLastError to get extended error information.
   */
   BOOL destroy()
@@ -221,7 +209,7 @@ struct OpenGLWindow
   BOOL swapBuffers()
     {return SwapBuffers(hDC);}
 
-  OpenGLWindow(docgl::GLContext& context)
+  OpenWGLWindow(docgl::GLContext& context)
     : context(context), hWnd(NULL), hDC(NULL), hGLRC(NULL), windowCallback(NULL) {}
 
 # ifdef GLEW_MX
@@ -233,21 +221,21 @@ struct OpenGLWindow
     {return context.glewGetContext();}
 # endif  //GLEW_MX
 
-  static OpenGLWindow* getOpenGLWindow(HWND hWnd)
-    {return reinterpret_cast<OpenGLWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));}
+  static OpenWGLWindow* getOpenWGLWindow(HWND hWnd)
+    {return reinterpret_cast<OpenWGLWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));}
 
   docgl::GLContext& context;
   HWND         hWnd;
   HDC          hDC;
   HGLRC        hGLRC;
-  OpenGLWindowCallback* windowCallback;
-}; // struct OpenGLWindow
+  OpenWGLWindowCallback* windowCallback;
+}; // struct OpenWGLWindow
 
 //////////////////////////////// TOOLS ////////////////////////////////////////
 
 
 /** 
-** Internal callback functions to handle all window functions registred by registerOpenGLWindowClass.
+** Internal callback functions to handle all window functions registred by registerOpenWGLWindowClass.
 ** Take care that some call are for dummy test windows and before OpenGL init.
 ** Must never be explicitly call.
 ** @param Handle For This Window.
@@ -264,7 +252,7 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
     return 0; // http://www.opengl.org/pipeline/article/vol003_7/ avoid GDI clearing the OpenGL windows background
   case WM_SIZE:
     {
-      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
       // must not be called before context initializing (durring window creation)
       if (window && window->windowCallback && window->context.isInitialized()) 
       {
@@ -276,16 +264,23 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
     break;
   case WM_CLOSE :
     {
-      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
       if (window && window->windowCallback)
         window->windowCallback->closed();
     }
     return 0;
   case WM_KEYDOWN:
     {
-      docwgl::OpenGLWindow* window = docwgl::OpenGLWindow::getOpenGLWindow(hWnd);
+      docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
       if (window && window->windowCallback)
         window->windowCallback->keyPressed((char)wParam);
+    }
+    return 0;
+  case WM_MOUSEMOVE:
+    {
+      docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
+      if (window && window->windowCallback)
+        window->windowCallback->mouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
     }
     return 0;
   default:
@@ -296,7 +291,7 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
 }
 
 /**
-** Registers a window class for subsequent use in calls to OpenGLWindow::create function.
+** Registers a window class for subsequent use in calls to OpenWGLWindow::create function.
 ** @param name specifies the window class name. The maximum length is 256.
 ** @param callbackModule is handle to the instance that contains the window procedure.
 ** @param cursor A handle to the class cursor. This must be a handle to a cursor resource.
@@ -309,7 +304,7 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
 ** @return TRUE on succeed. Call UnregisterClass for freeing class required memory. 
 **   Else return FALSE. Call GetLastError to get extended error information.
 */
-BOOL registerOpenGLWindowClass(LPCTSTR name, HINSTANCE callbackModule, 
+BOOL registerOpenWGLWindowClass(LPCTSTR name, HINSTANCE callbackModule, 
                          HCURSOR cursor = NULL, HICON icon = NULL, HICON smallIcon = NULL, 
                          LPCTSTR menuName = NULL, bool haveCloseMenu = true)
 {
@@ -353,9 +348,6 @@ BOOL dispatchNextThreadMessage(BOOL& threadCanLoop)
   }
   return returnValue;
 }
-
-VOID postQuitThreadMessage()
-  {PostQuitMessage(0);}
 
 }; // namespace docwgl
 

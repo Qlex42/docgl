@@ -7,14 +7,14 @@
 # define  _USE_MATH_DEFINES
 # include "Tools.h"
 # include "Docgl.h"
-# include "Docwgl.h"
+# include "DocglWindow.h"
 
 struct SuperFormula3D
   {float a, b, m, n1, n2, n3;};
 static const float step = 0.05f;
 enum {superFormulaNumVertices = 7938}; // depends from step
 
-class Globals: public docwgl::OpenGLWindowCallback
+class Globals: public OpenWGLWindowCallback
 {
 public:
   docgl::GLDirectContext context;
@@ -37,6 +37,7 @@ public:
   bool invertCoordinate;
   bool cullFace;
   bool depthTest;
+  bool wantExit;
 
   Globals()
     : superFormulaVertexBuffer(context)
@@ -54,6 +55,7 @@ public:
     , invertCoordinate(false)
     , cullFace(false)
     , depthTest(true)
+    , wantExit(false)
     {
       static const SuperFormula3D formula = {1.f, 1.f, 4.f, 12.f, 15.f, 15.f};
       superFormula3d = formula;
@@ -187,7 +189,7 @@ public:
   {
     bool invalidateMesh = false;
     if (key == 27)
-      docwgl::postQuitThreadMessage();
+      wantExit = true;
     if (key == VK_F1)
 	  {
 		  ++nStep;
@@ -249,9 +251,7 @@ public:
   }
 
   virtual void closed() 
-  {
-    docwgl::postQuitThreadMessage();
-  }
+    {wantExit = true;}
 
   void SetupRC()
   {
@@ -329,63 +329,19 @@ public:
 int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
 {
   Globals g;
+  OpenGLWindow window(g.context);
 
-  HINSTANCE module = GetModuleHandle(NULL);
-  if(!docwgl::registerOpenGLWindowClass(szClassName, module, LoadCursor(NULL, IDC_ARROW)))
-  {
-    printf("Unable to register window class.\n");
-    return 1;
-  }
-
-  const int pixelFormatAttributes[] = {
-    WGL_SUPPORT_OPENGL_ARB, 1, // Must support OGL rendering
-    WGL_DRAW_TO_WINDOW_ARB, 1, // pf that can run a window
-    WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB, // must be HW accelerated
-    WGL_RED_BITS_ARB,       8, // 8 bits of red precision in window
-    WGL_GREEN_BITS_ARB,     8, // 8 bits of green precision in window
-    WGL_BLUE_BITS_ARB,      8, // 8 bits of blue precision in window
-    //WGL_ALPHA_BITS_ARB, 8, 
-    //WGL_COLOR_BITS_ARB,     24, // 8 bits of each R, G and B
-    WGL_DEPTH_BITS_ARB,     16, // 16 bits of depth precision for window
-    WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB, // pf should be RGBA type
-    WGL_DOUBLE_BUFFER_ARB,	GL_TRUE, // Double buffered context
-    WGL_SWAP_METHOD_ARB,    WGL_SWAP_EXCHANGE_ARB, // double buffer swap (more speed ?)
-    WGL_SAMPLE_BUFFERS_ARB, GL_TRUE, // MSAA on
-    WGL_SAMPLES_ARB,        8, // 8x MSAA 
-    0                          // NULL termination
-  }; 
-  const int contextAttributes[] = {
-#ifdef DOCGL4_1
-    WGL_CONTEXT_MAJOR_VERSION_ARB,  4,
-    WGL_CONTEXT_MINOR_VERSION_ARB,  1,
-#else // !DOCGL4_1
-    WGL_CONTEXT_MAJOR_VERSION_ARB,  3,
-    WGL_CONTEXT_MINOR_VERSION_ARB,  3,
-#endif // !DOCGL4_1
-    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-    //WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
-    0};
-
-  DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_VISIBLE;
-  DWORD extendedWindowStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
-
-  // ajust windows size and position depending to wanted client size and position.
-  RECT windowRect = clientRect;
-  AdjustWindowRectEx(&windowRect, windowStyle, FALSE, extendedWindowStyle);
-  OffsetRect(&windowRect, clientRect.left - windowRect.left, clientRect.top - windowRect.top);
-
-  docwgl::OpenGLWindow openGLWindow(g.context);
-  if (!openGLWindow.create(g, szClassName, windowRect, windowStyle, 
-    extendedWindowStyle, pixelFormatAttributes, contextAttributes))
+  if (!window.create(g, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom, szClassName))
   {
     printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
     jassertfalse;
-    openGLWindow.destroy();
     return 2;
   }
   
   if (g.context.initialize().hasErrors())
   {
+    window.destroy();
+    jassertfalse;
     fprintf(stderr, "GLContext initialize error\n");
     return 2;
   }
@@ -420,15 +376,13 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
     if (!docwgl::dispatchNextThreadMessage(threadCanLoop) && threadCanLoop)
     {
       g.draw(); // no message to dispatch: render the scene.
-	  	openGLWindow.swapBuffers(); // Flush drawing commands
+	  	window.swapBuffers(); // Flush drawing commands
     }
     Sleep(0); // yeld to other thread -> check if it's realy needed.
   }
-  while (threadCanLoop);
+  while (!g.wantExit);
   g.ShutdownRC();
 
-  openGLWindow.destroy();
-  // Delete the window class
-  UnregisterClass(szClassName, module);
+  window.destroy();
   return 0;
 }
