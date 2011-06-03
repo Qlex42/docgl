@@ -224,6 +224,9 @@ struct OpenWGLWindow
   static OpenWGLWindow* getOpenWGLWindow(HWND hWnd)
     {return reinterpret_cast<OpenWGLWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));}
 
+  BOOL isVisible() const
+    {return TRUE; /* TODO*/}
+
   docgl::GLContext& context;
   HWND         hWnd;
   HDC          hDC;

@@ -84,7 +84,10 @@ public:
   }
 
   bool swapBuffers()
-    {return window.swapBuffers() == TRUE ? true : false;}
+    {return window.swapBuffers() != FALSE ? true : false;}
+
+  bool isVisible() const
+    {return window.isVisible() != FALSE ? true : false;}
 
 private:
   docwgl::OpenWGLWindow window;
@@ -154,7 +157,7 @@ public:
     return true;
   }
 
-  bool isVisible()
+  bool isVisible() const
     {return window.mapped;}
 
   docglx::OpenGLXWindow window;
