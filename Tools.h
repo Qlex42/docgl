@@ -7,7 +7,8 @@
 
 # define GLM_SWIZZLE_XYZW // for .xyz
 # include <glm/glm.hpp> //vec3, vec4, ivec4, mat4
-# include <glm/gtc/matrix_transform.hpp> //translate, rotate, scale, perspective 
+# include <glm/gtc/matrix_transform.hpp> //translate, rotate, scale, perspective
+# include <cstdio> // for printf
 
 //////////////////////// Shader Compiler ///////////////////////////////////////
 
@@ -15,7 +16,7 @@ docgl::GLErrorFlags buildAndLog(docgl::GLBuildableInterface& buildable, GLboolea
 {
   wasBuilt = GL_FALSE;
   const docgl::GLErrorFlags errorFlags = buildable.build();
-  GLsizei size = 0; 
+  GLsizei size = 0;
   if (buildable.getNumCharacteresOfLastLog(size).hasErrors())
     {jassertfalse;}
   if (buildable.hasBuildSucceed(wasBuilt).hasErrors())
@@ -38,7 +39,7 @@ docgl::GLErrorFlags validateAndLog(docgl::GLValidableInterface& validable, GLboo
 {
   wasValidated = GL_FALSE;
   const docgl::GLErrorFlags errorFlags = validable.validate();
-  GLsizei size = 0; 
+  GLsizei size = 0;
   if (validable.getNumCharacteresOfLastLog(size).hasErrors())
     {jassertfalse;}
   if (validable.hasValidationSucceed(wasValidated).hasErrors())
@@ -74,8 +75,8 @@ docgl::GLErrorFlags buildShader(docgl::GLShaderObject& shader, GLenum shaderType
   return docgl::GLErrorFlags::succeed;
 }
 
-docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program, 
-                          const GLchar* vertexSource, const GLchar* fragmentSource, 
+docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program,
+                          const GLchar* vertexSource, const GLchar* fragmentSource,
                           const GLchar** vertexAttributes, bool separable = false /** can be true only when GLEW_ARB_separate_shader_objects is true*/)
 {
   docgl::GLErrorFlags errorFlags;
@@ -91,7 +92,7 @@ docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program,
     if (!wasBuilt)
       return docgl::GLErrorFlags::invalidValueFlag;
   }
-  
+
   // fragment shader compilation
   docgl::GLShaderObject fragmentShader(program.getContext());
   if (fragmentSource)
@@ -106,7 +107,7 @@ docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program,
     if (!wasBuilt)
     {
       if (vertexSource)
-        vertexShader.destroy(); 
+        vertexShader.destroy();
       return docgl::GLErrorFlags::invalidValueFlag;
     }
   }
@@ -118,9 +119,9 @@ docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program,
   if (errorFlags.hasErrors())
   {
     if (vertexSource)
-      vertexShader.destroy(); 
+      vertexShader.destroy();
     if (fragmentSource)
-      fragmentShader.destroy(); 
+      fragmentShader.destroy();
     return errorFlags;
   }
   if (vertexSource)
@@ -136,7 +137,7 @@ docgl::GLErrorFlags buildShaderProgram(docgl::GLProgramObject& program,
   if (vertexSource)
     vertexShader.destroy();
   if (fragmentSource)
-    fragmentShader.destroy(); 
+    fragmentShader.destroy();
   if (errorFlags.hasErrors())
     {program.destroy(); return errorFlags;}
   // program build
@@ -153,7 +154,7 @@ bool createPackedImage(docgl::GLPackedImage& image, GLenum format, GLenum type, 
   jassert(!image.data); // overwritting existing data: potential memory leak
   if (!pixelCount)
     {jassertfalse; return false;} // count must not be 0
-    
+
   const size_t pixelSize = image.getPixelSize(format, type);
   if (!pixelSize)
     {jassertfalse; return false;} // unable to define pixel type
@@ -170,7 +171,7 @@ void destroyPackedImage(docgl::GLPackedImage& image)
   jassert(image.data); // destroy an unset GLPackedImage
   if (image.data)
   {
-    delete [] image.data;
+    delete [] (GLubyte*)image.data;
     image.data = NULL;
   }
 }
@@ -183,7 +184,7 @@ struct Frame
   glm::vec3 forward;	// Where am I going?
   glm::vec3 up;		    // Which way is up?
 
-  Frame() 
+  Frame()
     : origin(0.0, 0.0, 0.0)   // At origin
     , up(0.0, 1.0, 0.0)       // Up is up (+Y)
     , forward(0.0, 0.0, -1.0) // Forward is -Z (default OpenGL)
@@ -191,7 +192,7 @@ struct Frame
 
   glm::vec3 getZAxis() const
     {return forward;}
-  glm::vec3 getYAxis() const 
+  glm::vec3 getYAxis() const
     {return up;}
   glm::vec3 getXAxis() const
     {return glm::cross(up, forward);}
@@ -206,12 +207,12 @@ struct Frame
   // Just assemble the matrix
   glm::mat4 getMatrix(bool rotationOnly = false)
   {
-    return glm::mat4(glm::vec4(getXAxis(), 0),  
+    return glm::mat4(glm::vec4(getXAxis(), 0),
                      glm::vec4(up, 0),
-                     glm::vec4(forward, 0), 
+                     glm::vec4(forward, 0),
                      rotationOnly ? glm::vec4(0, 0, 0, 1) : glm::vec4(origin, 1));
   }
-  
+
   // Rotate in world coordinates...
   void rotateWorld(float angle, float x, float y, float z)
   {
@@ -230,8 +231,8 @@ struct Frame
     const glm::vec3 x = glm::cross(up, z);
 
     const glm::mat4 res = glm::transpose(glm::mat4(glm::vec4(x, 0),
-                                   glm::vec4(up, 0), 
-                                   glm::vec4(z, 0),  
+                                   glm::vec4(up, 0),
+                                   glm::vec4(z, 0),
                                    glm::vec4(0, 0, 0, 1)));
     // Apply translation too
     return rotationOnly ? res : glm::translate(res, -origin);

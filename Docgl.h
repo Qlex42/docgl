@@ -49,10 +49,12 @@
 
 # ifdef linux
 #  include <GL/glew.h>
+#  include <csignal> /* for sigtrap */
+#  include <cstring> /** for memcpy*/
 # endif // !linux
 
 # if defined(DEBUG) || defined(_DEBUG)
-#  ifndef jassertfalse 
+#  ifndef jassertfalse
 #   ifdef WIN32
 #    ifdef _MSC_VER
 #     define jassertfalse __debugbreak()
@@ -63,7 +65,7 @@
 #    endif // !_MSC_VER
 #   elif __APPLE__
 #     define jassertfalse Debugger();
-#   elif JUCE_LINUX
+#   elif linux
 #     define jassertfalse kill (0, SIGTRAP);
 #   endif // !WIN32
 #  endif // jassertfalse
@@ -72,8 +74,8 @@
 #  endif // !jassert
 # else // !DEBUG
 #  define jassert(X)
-#  define jassertfalse 
-# endif // !DEBUG 
+#  define jassertfalse
+# endif // !DEBUG
 
 # include <map> // for GLIntegerConstantsStore
 
@@ -102,7 +104,7 @@ public:
     outOfVideoMemoryFlag            = 8,
     invalidFrameBufferOperationFlag = 16,
   };
-  GLErrorFlags(ErrorFlags errorFlags) 
+  GLErrorFlags(ErrorFlags errorFlags)
   {
     unknownErrorCode = 0;
     this->errorFlags = errorFlags;
@@ -153,7 +155,7 @@ private:
 };
 
 // NB: default constructor set flags to succeed
-const GLErrorFlags GLErrorFlags::succeed; 
+const GLErrorFlags GLErrorFlags::succeed;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -162,14 +164,14 @@ template <typename GLPropertyType>
 class GLProperty
 {
 public:
-  typedef typename GLPropertyType GLType;
+  typedef GLPropertyType GLType;
 
   GLProperty(GLContext& context)
     : context(context) {}
   virtual ~GLProperty() {}
 
   // Warning: can produce OpenGL flushing performance penalty
-  virtual GLErrorFlags getValue(GLType& value) const = 0; 
+  virtual GLErrorFlags getValue(GLType& value) const = 0;
 
   // methods
   virtual GLType getDefaultValue() const
@@ -201,7 +203,7 @@ template <typename GLRegisterType>
 class GLRegister : public GLProperty<GLRegisterType>
 {
 public:
-  typedef typename GLRegisterType GLType;
+  typedef GLRegisterType GLType;
    // construction
   GLRegister(GLContext& context)
     : GLProperty<GLRegisterType>(context) {}
@@ -215,16 +217,16 @@ public:
 template <typename GLCachedRegisterType>
 class GLCachedRegister : public GLRegister<GLCachedRegisterType>
 {
-  typedef typename GLCachedRegisterType GLType;
-  typedef typename GLRegister<GLType> GLRegisterType;
+  typedef GLCachedRegisterType GLType;
+  typedef GLRegister<GLType> GLRegisterType;
 
 public:
   GLCachedRegister(GLRegisterType& decorated)
     : GLRegister<GLType>(decorated.getContext())
     , decorated(decorated)
     , currentValue(decorated.getDefaultValue())
-    {} 
- 
+    {}
+
   virtual GLErrorFlags getValue(GLType& value) const
   {
     value = currentValue;
@@ -244,7 +246,7 @@ public:
 
   // last chance methods: Warning: can produce OpenGL flushing performance penalty
   // if return false, ensure GLCachedRegister construction have been done just after OpenGL context creation.
-  bool isConsistent() const 
+  bool isConsistent() const
   {
     GLType value;
     if (decorated.getValue(value).hasErrors())
@@ -253,7 +255,7 @@ public:
   }
   GLErrorFlags makeConsistent() const
     {return decorated.getValue(currentValue);}
-    
+
 protected:
   GLRegisterType& decorated;
   GLType currentValue;
@@ -265,10 +267,10 @@ struct GLColor
 {
   enum {
     redId   = 0,
-    greenId = 1,  
-    blueId  = 2, 
+    greenId = 1,
+    blueId  = 2,
     alphaId = 3,
-    
+
     numComponents = 4
   };
 
@@ -308,7 +310,7 @@ struct GLColor
 
   GLfloat& getRed()
     {return components[redId];}
-  GLfloat& getGreen() 
+  GLfloat& getGreen()
     {return components[greenId];}
   GLfloat& getBlue()
     {return components[blueId];}
@@ -324,10 +326,10 @@ struct GLRegion
 {
   enum {
     leftId    = 0,
-    bottomId  = 1,  
-    widthId   = 2, 
+    bottomId  = 1,
+    widthId   = 2,
     heightId  = 3,
-    
+
     numDimensions = 4
   };
 
@@ -375,7 +377,7 @@ struct GLRegion
 
   GLint& getLeft()
     {return dimensions[leftId];}
-  GLint& getBottom() 
+  GLint& getBottom()
     {return dimensions[bottomId];}
   GLint& getWidth()
     {return dimensions[widthId];}
@@ -401,7 +403,7 @@ struct GLPixelStore
     , optionalPaddedImageWidth(optionalPaddedImageWidth)
     , optionalPaddedImageHeight(optionalPaddedImageHeight)
     , haveLittleEndianComponentBytesOrdering(haveLittleEndianComponentBytesOrdering)
-    , haveReversedBitsOrdering(haveReversedBitsOrdering) 
+    , haveReversedBitsOrdering(haveReversedBitsOrdering)
     , numSkippedPixels(numSkippedPixels)
     , numSkippedRows(numSkippedRows)
     , numSkippedImages(numSkippedImages)
@@ -412,8 +414,8 @@ struct GLPixelStore
 
   bool isValid() const
   {
-    return isValidRowByteAligment(rowByteAligment) 
-      && optionalPaddedImageWidth >= 0 
+    return isValidRowByteAligment(rowByteAligment)
+      && optionalPaddedImageWidth >= 0
       && optionalPaddedImageHeight >= 0
       && numSkippedPixels >= 0
       && numSkippedRows >= 0
@@ -433,8 +435,8 @@ struct GLPixelStore
   }
 
   GLint rowByteAligment;
-  GLint optionalPaddedImageWidth;                   
-  GLint optionalPaddedImageHeight;                 
+  GLint optionalPaddedImageWidth;
+  GLint optionalPaddedImageHeight;
   GLboolean haveLittleEndianComponentBytesOrdering;
   GLboolean haveReversedBitsOrdering;
   GLint numSkippedPixels;
@@ -512,7 +514,7 @@ public:
   virtual GLRegister<GLboolean>& getCullFace() = 0;
   virtual GLRegister<GLboolean>& getFillPolygonOffset() = 0;
   virtual GLRegister<GLPolygonOffset>& getPolygonOffset() = 0;
-  
+
   // multi texturing
   virtual GLenum getNumTextureUnits() const = 0;
   virtual bool isValidTextureUnitIndex(GLenum index) const = 0;
@@ -547,8 +549,8 @@ public:
   // program
   virtual bool isValidShaderType(GLenum shaderType) const = 0;
   virtual GLRegister<GLenum>& getActiveProgramBind() = 0;
-  
-  // Opengl 4.1 subroutines 
+
+  // Opengl 4.1 subroutines
   virtual GLErrorFlags loadUniformSubroutines(GLenum shaderType, GLsizei count, const GLuint* indices) = 0; // need to be called after each getActiveProgramBind().setValue
   virtual GLuint getMaxSubRoutines() const = 0;
   virtual GLuint getMaxSubRoutinesUniformLocation() const = 0;
@@ -573,7 +575,7 @@ public:
 
 class GLIntegerConstantsStore
 {
-public: 
+public:
   GLIntegerConstantsStore(GLContext& context)
     : context(context) {}
 
@@ -651,7 +653,7 @@ private:
 
 class GLStringConstantsStore
 {
-public: 
+public:
   GLStringConstantsStore(GLContext& context)
     : context(context) {}
 
@@ -704,7 +706,7 @@ private:
 
 class GLFloatConstantsStore
 {
-public: 
+public:
   GLFloatConstantsStore(GLContext& context)
     : context(context) {}
 
@@ -785,7 +787,7 @@ class GLBooleanRegister : public GLRegister<GLboolean>
 public:
   GLBooleanRegister(GLContext& context)
     : GLRegister<GLboolean>(context) {}
-  
+
   virtual GLboolean getDefaultValue() const
     {return defaultValue;}
 
@@ -798,7 +800,7 @@ public:
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
   }
-  
+
   // Warning: can produce OpenGL flushing performance penalty
   virtual GLErrorFlags getValue(GLboolean& id) const
   {
@@ -818,7 +820,7 @@ class GLHint : public GLRegister<GLenum>
 public:
   GLHint(GLContext& context)
     : GLRegister<GLenum>(context) {}
-  
+
   virtual GLenum getDefaultValue() const
     {return GL_DONT_CARE;}
 
@@ -830,7 +832,7 @@ public:
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
   }
-  
+
   // Warning: can produce OpenGL flushing performance penalty
   virtual GLErrorFlags getValue(GLenum& id) const
   {
@@ -1043,7 +1045,7 @@ class GLPointSize : public GLRegister<GLfloat>
 public:
   GLPointSize(GLContext& context)
     : GLRegister<GLfloat>(context) {}
-  
+
   virtual GLfloat getDefaultValue() const
     {return 1.0f;}
 
@@ -1054,7 +1056,7 @@ public:
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
   }
-  
+
   // Warning: can produce OpenGL flushing performance penalty
   virtual GLErrorFlags getValue(GLfloat& size) const
   {
@@ -1089,7 +1091,7 @@ public:
     return GLErrorFlags::succeed;
   }
 
-  // return texture unit ID based on GL_TEXTURE0 
+  // return texture unit ID based on GL_TEXTURE0
   // Warning: can produce OpenGL flushing performance penalty
   virtual GLErrorFlags getValue(GLenum& id) const
   {
@@ -1158,7 +1160,7 @@ template <class GLPixelStoreType, GLenum name, GLPixelStoreType defaultValue = 0
 class GLPixelStoreSubRegister : public GLRegister<GLPixelStoreType>
 {
 public:
-  typedef typename GLPixelStoreType GLType;
+  typedef GLPixelStoreType GLType;
   GLPixelStoreSubRegister(GLContext& context)
   : GLRegister<GLType>(context) {}
 
@@ -1169,7 +1171,7 @@ public:
     if (!isValidParameter(name, param))
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     glPixelStorei(name, param);
-    jassertglsucceed(context);
+    jassertglsucceed(GLRegister<GLType>::context);
     return GLErrorFlags::succeed;
   }
 
@@ -1180,9 +1182,9 @@ public:
   virtual GLErrorFlags getValue(GLType& param) const
   {
     GLint intValue = defaultValue;
-    context.clearErrorFlags();
+    GLRegister<GLType>::context.clearErrorFlags();
     glGetIntegerv(name, &intValue);
-    GLErrorFlags errorFlags = context.popErrorFlags();
+    GLErrorFlags errorFlags = GLRegister<GLType>::context.popErrorFlags();
     if (errorFlags.hasSucceed())
     {
       if ((intValue < 0) || !isValidParameter(name, intValue))
@@ -1197,17 +1199,17 @@ public:
   static bool isValidRowByteAligment(GLType rowAligment)
     {return (rowAligment == 1) || (rowAligment == 2) || (rowAligment == 4) || (rowAligment == 8);}
 
-  static bool isValidParameter(GLenum name, GLType parameter)
+  static bool isValidParameter(GLenum parameterName, GLType parameter)
   {
-    if (name == GL_PACK_ALIGNMENT || name == GL_UNPACK_ALIGNMENT)
+    if (parameterName== GL_PACK_ALIGNMENT || parameterName == GL_UNPACK_ALIGNMENT)
       return isValidRowByteAligment(parameter);
     else
       return parameter >= 0;
   }
 
-  static bool isValidName(GLenum name)
+  static bool isValidName(GLenum storeName)
   {
-    switch (name)
+    switch (storeName)
     {
     case GL_PACK_ALIGNMENT:
     case GL_PACK_ROW_LENGTH:
@@ -1501,13 +1503,13 @@ public:
       GL_MAX_TEXTURE_SIZE,                  // for getMaxTextureSize
       GL_MAX_VERTEX_ATTRIBS,                // for getNumVertexAttributes
       GL_MAX_VIEWPORT_DIMS,                 // for GL_MAX_VIEWPORT_WIDTH GL_MAX_VIEWPORT_HEIGHT -> get
-      }; 
+      };
     GLErrorFlags errorFlags = integerConstantsStore.set(glIntegerConstants, sizeof(glIntegerConstants) / sizeof(glIntegerConstants[0]));
     if (errorFlags.hasErrors())
       return errorFlags;
 
     static const GLenum gl4_1_IntegerConstants[] = {
-      GL_MAX_SUBROUTINES, 
+      GL_MAX_SUBROUTINES,
       GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS,
     };
     errorFlags = integerConstantsStore.set(gl4_1_IntegerConstants, sizeof(gl4_1_IntegerConstants) / sizeof(gl4_1_IntegerConstants[0]));
@@ -1553,32 +1555,32 @@ public:
   {
     GLErrorFlags returnValue;
     GLenum error;
-    do 
+    do
     {
       error = glGetError();
       switch (error)
       {
       case GL_NO_ERROR:
         // do nothing
-        break; 
+        break;
       case GL_INVALID_ENUM:
         returnValue.merge(GLErrorFlags::invalidEnumFlag);
         break;
-      case GL_INVALID_VALUE: 
+      case GL_INVALID_VALUE:
         returnValue.merge(GLErrorFlags::invalidValueFlag);
         break;
-      case GL_INVALID_OPERATION: 
+      case GL_INVALID_OPERATION:
         returnValue.merge(GLErrorFlags::invalidOperationFlag);
         break;
       case GL_OUT_OF_MEMORY:
         returnValue.merge(GLErrorFlags::outOfVideoMemoryFlag);
         break;
-      case GL_INVALID_FRAMEBUFFER_OPERATION: 
+      case GL_INVALID_FRAMEBUFFER_OPERATION:
         returnValue.merge(GLErrorFlags::invalidFrameBufferOperationFlag);
         break;
       default:
         jassertfalse;                           // Unknown or deprecated error code; WARNING: The next loop can overrite this value.
-        returnValue.setUnknownErrorCode(error); // WARNING: only the last returned unknown error are returned. 
+        returnValue.setUnknownErrorCode(error); // WARNING: only the last returned unknown error are returned.
         break;                                  // This Must be done to ensure popContextErrorFlags caller that we leave state without error.
       }
     }
@@ -1645,7 +1647,7 @@ public:
     {return floatConstantsStore.getValue(GLFloatConstantsStore::GL_POINT_SMALLEST_SIZE);}
   virtual GLfloat getPointLargestSize() const
     {return floatConstantsStore.getValue(GLFloatConstantsStore::GL_POINT_LARGEST_SIZE);}
-  virtual GLfloat getPointSizeGranularity() const 
+  virtual GLfloat getPointSizeGranularity() const
     {return floatConstantsStore.getValue(GL_POINT_SIZE_GRANULARITY);}
   virtual GLRegister<GLboolean>& getPointSizeProgrammable()
     {return pointSizeProgrammable;}
@@ -1694,7 +1696,7 @@ public:
     case GL_TEXTURE_2D_MULTISAMPLE:
     case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
       return true;
-    default: 
+    default:
       return false;
     }
   }
@@ -1782,7 +1784,7 @@ public:
 
   // program
   virtual bool isValidShaderType(GLenum shaderType) const
-    {return shaderType == GL_VERTEX_SHADER || shaderType == GL_GEOMETRY_SHADER || shaderType == GL_FRAGMENT_SHADER 
+    {return shaderType == GL_VERTEX_SHADER || shaderType == GL_GEOMETRY_SHADER || shaderType == GL_FRAGMENT_SHADER
       || shaderType == GL_TESS_CONTROL_SHADER || shaderType == GL_TESS_EVALUATION_SHADER;} // for OpenGL 4.1 only
 
   virtual GLRegister<GLenum>& getActiveProgramBind()
@@ -1791,7 +1793,7 @@ public:
   virtual GLErrorFlags loadUniformSubroutines(GLenum shaderType, GLsizei count, const GLuint* indices)
   {
     if (!GLEW_ARB_shader_subroutine)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     if (!isValidShaderType(shaderType))
       return GLErrorFlags::invalidEnumFlag;
     // TODO assert count == GL_ACTIVE_SUBROUTINE_UNIFORM_LOCATIONS
@@ -1837,7 +1839,7 @@ protected:
 
   // viewport
   GLActiveViewport activeViewport;
-  
+
   // scissor
   GLActiveScissor activeScissor;
   GLBooleanRegister<GL_SCISSOR_TEST> scissorTest;
@@ -1852,12 +1854,12 @@ protected:
 
   // line
   GLBooleanRegister<GL_POLYGON_OFFSET_LINE> linePolygonOffset;
-  
+
   // polygon
   GLBooleanRegister<GL_CULL_FACE> cullFace;
   GLBooleanRegister<GL_POLYGON_OFFSET_FILL> fillPolygonOffset;
   GLActivePolygonOffset polygonOffset;
-  
+
   // multitexture
   GLActiveTextureUnit activeTextureUnit;
 
@@ -1976,11 +1978,11 @@ struct GLPackedImage
       {jassertfalse; return false;}
     valid = isValidType(type);
     if (!valid)
-      {jassertfalse; return false;}    
+      {jassertfalse; return false;}
     valid = data != NULL;
     if (!valid)
-      {jassertfalse; return false;}    
-    return valid;            
+      {jassertfalse; return false;}
+    return valid;
   }
 
   // return component count or zero on error
@@ -2034,7 +2036,7 @@ class GLObject
 public:
   GLObject(GLContext& context)
     : context(context), id(0) {}
-  
+
   virtual ~GLObject()
   {
     jassert(id == 0) // VRAM leak? Call destroy() or setId(0) on your object before destruction.
@@ -2043,7 +2045,7 @@ public:
 
   // Construct custom object (check isValid after a non-zero set)
   // To discard destructor assert when object is used as a 'reference', unlink object from openGL named Object with setId(0)
-  void setId(GLuint id) 
+  void setId(GLuint id)
     {this->id = id;}
 
   void destroy()
@@ -2089,13 +2091,13 @@ protected:
 
 // WARNING: ensure GLRegisterType::setValue can never fail (debug assert only)
 // WARNING: use a cached register to do not perform extra setValue if there is no changes to do.
-// WARNING: not using a cached register can produce OpenGL flush performance penalty when reading previous value. 
+// WARNING: not using a cached register can produce OpenGL flush performance penalty when reading previous value.
 template <class GLScopedSetValueType>
 class GLScopedSetValue
 {
 public:
-  typedef typename GLScopedSetValueType GLType;
-  typedef typename GLRegister<GLType> GLRegisterType;
+  typedef GLScopedSetValueType GLType;
+  typedef GLRegister<GLType> GLRegisterType;
 
   GLScopedSetValue(GLRegisterType& reg, const GLType newValue)
     : reg(reg)
@@ -2156,7 +2158,7 @@ public:
   GLsizei getNumBitsForStencil(GLint level = 0) const;
   GLboolean isCompressed(GLint level = 0) const;
   GLsizei getCompressedImageSize(GLint level = 0) const;
-  
+
   // texture sampling parameter Warning: possible OpenGL flush performance penalty.
   GLErrorFlags getBaseLevel(GLint& baseLevel) const;
   GLErrorFlags getMaxLevel(GLint& maxLevel) const;
@@ -2198,7 +2200,7 @@ public:
   {
     // todo jassert on internalFormat
     jassert(!id); // overwritting existing: potential memory leak
-    jassert(context.isValidTextureSize(width) && context.isValidTextureSize(height)); 
+    jassert(context.isValidTextureSize(width) && context.isValidTextureSize(height));
     glGenTextures(1, &id);
     jassertglsucceed(context);
     jassert(id);
@@ -2235,8 +2237,8 @@ public:
 protected:
   static GLenum getNULLDataFormat(GLint internalFormat)
   {
-    return (internalFormat == GL_DEPTH_COMPONENT || 
-            internalFormat == GL_DEPTH_COMPONENT16 || 
+    return (internalFormat == GL_DEPTH_COMPONENT ||
+            internalFormat == GL_DEPTH_COMPONENT16 ||
             internalFormat == GL_DEPTH_COMPONENT24)
         ? GL_DEPTH_COMPONENT : GL_RGBA;
   }
@@ -2245,11 +2247,11 @@ protected:
   {
     switch (target)
     {
-    case GL_TEXTURE_2D: 
+    case GL_TEXTURE_2D:
       return GL_PROXY_TEXTURE_2D;
-    case GL_TEXTURE_1D_ARRAY: 
+    case GL_TEXTURE_1D_ARRAY:
       return GL_PROXY_TEXTURE_1D_ARRAY;
-    case GL_TEXTURE_RECTANGLE: 
+    case GL_TEXTURE_RECTANGLE:
       return GL_PROXY_TEXTURE_RECTANGLE;
     case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
     case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -2270,8 +2272,8 @@ protected:
 
   static bool isValidMinificationFilter(GLenum minificationFilter)
   {
-    return minificationFilter == GL_NEAREST || 
-      minificationFilter == GL_LINEAR || 
+    return minificationFilter == GL_NEAREST ||
+      minificationFilter == GL_LINEAR ||
       minificationFilter == GL_NEAREST_MIPMAP_NEAREST ||
       minificationFilter == GL_NEAREST_MIPMAP_LINEAR ||
       minificationFilter == GL_LINEAR_MIPMAP_NEAREST ||
@@ -2280,13 +2282,13 @@ protected:
 
   static bool isValidSwizzling(GLenum swizzling)
   {
-    return swizzling == GL_RED || swizzling == GL_GREEN || 
+    return swizzling == GL_RED || swizzling == GL_GREEN ||
       swizzling == GL_BLUE || swizzling == GL_ALPHA ||
       swizzling == GL_ZERO || swizzling == GL_ONE;
   }
 
   static bool isValidWrappingMode(GLenum wrappingMode)
-    {return wrappingMode == GL_CLAMP_TO_EDGE || wrappingMode == GL_REPEAT || 
+    {return wrappingMode == GL_CLAMP_TO_EDGE || wrappingMode == GL_REPEAT ||
       wrappingMode == GL_CLAMP_TO_BORDER || wrappingMode == GL_MIRRORED_REPEAT;}
 
 protected:
@@ -2306,11 +2308,11 @@ template <class GLTextureParameterType, GLenum parameterName, GLint defaultValue
 class GLTextureParameterRegister : public GLRegister<GLTextureParameterType>
 {
 public:
-  typedef typename GLTextureParameterType GLType;
+  typedef GLTextureParameterType GLType;
 
   GLTextureParameterRegister(const GLTextureObject& textureObject)
     : GLRegister<GLType>(textureObject.getContext()), textureObject(textureObject) {}
-   
+
   virtual GLType getDefaultValue() const
     {return static_cast<GLType>(defaultValue);}
 
@@ -2318,16 +2320,16 @@ public:
   virtual GLErrorFlags getValue(GLType& param) const
   {
     const GLenum target = textureObject.getTarget();
-    if (!context.isValidTextureBindingTarget(target))
+    if (!GLRegister<GLType>::context.isValidTextureBindingTarget(target))
       {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
-    context.clearErrorFlags();
-    GLScopedSetValue<GLuint> _(context.getActiveTextureBind(target), textureObject.getId());
+    GLRegister<GLType>::context.clearErrorFlags();
+    GLScopedSetValue<GLuint> _(GLRegister<GLType>::context.getActiveTextureBind(target), textureObject.getId());
     GLErrorFlags errorFlags = _.getConstructionState();
     GLint intValue = defaultValue;
     if (errorFlags.hasSucceed())
     {
       glGetTexParameteriv(target, parameterName, &intValue);
-      errorFlags = context.popErrorFlags();
+      errorFlags = GLRegister<GLType>::context.popErrorFlags();
       if (errorFlags.hasSucceed())
       {
         if (intValue < 0)
@@ -2342,18 +2344,18 @@ public:
 
   virtual GLErrorFlags setValue(const GLType& param)
   {
-    // TODO check 
+    // TODO check
     //if (!context.isValidTextureParameter(parameterName, param))
     //  {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
     if (param < 0)
 		  return GLErrorFlags::invalidValueFlag;
     const GLenum target = textureObject.getTarget();
-    if (!context.isValidTextureBindingTarget(target))
+    if (!GLRegister<GLType>::context.isValidTextureBindingTarget(target))
       {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
-    GLScopedSetValue<GLuint> _(context.getActiveTextureBind(target), textureObject.getId());
+    GLScopedSetValue<GLuint> _(GLRegister<GLType>::context.getActiveTextureBind(target), textureObject.getId());
 
     glTexParameteri(target, parameterName, param);
-    jassertglsucceed(context);
+    jassertglsucceed(GLRegister<GLType>::context);
     return GLErrorFlags::succeed;
   }
 
@@ -2365,11 +2367,11 @@ template <GLenum parameterName, GLint defaultValue = 0>
 class GLTextureFloatParameterRegister : public GLRegister<GLfloat>
 {
 public:
-  typedef typename GLfloat GLType;
+  typedef GLfloat GLType;
 
   GLTextureFloatParameterRegister(const GLTextureObject& textureObject)
     : GLRegister<GLfloat>(textureObject.getContext()), textureObject(textureObject) {}
-   
+
   virtual GLfloat getDefaultValue() const
     {return defaultValue;}
 
@@ -2396,7 +2398,7 @@ public:
 
   virtual GLErrorFlags setValue(const GLfloat& param)
   {
-    // TODO check 
+    // TODO check
     //if (!context.isValidTextureParameter(parameterName, param))
     //  {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
     const GLenum target = textureObject.getTarget();
@@ -2561,7 +2563,7 @@ template <class GLTexturePropertyType, GLenum propertyName>
 class GLTextureProperty : public GLProperty<GLTexturePropertyType>
 {
 public:
-  typedef typename GLTexturePropertyType GLType;
+  typedef GLTexturePropertyType GLType;
 
   GLTextureProperty(const GLTextureObject& textureObject, GLint level)
     : GLProperty<GLType>(textureObject.getContext()), textureObject(textureObject), level(level)
@@ -2574,11 +2576,11 @@ public:
   virtual GLType getValue() const
   {
     const GLenum target = textureObject.getTarget();
-    jassert(context.isValidTextureBindingTarget(target));
-    GLScopedSetValue<GLuint> _(context.getActiveTextureBind(target), textureObject.getId());
+    jassert(GLProperty<GLType>::context.isValidTextureBindingTarget(target));
+    GLScopedSetValue<GLuint> _(GLProperty<GLType>::context.getActiveTextureBind(target), textureObject.getId());
     GLint intValue = 0;
     glGetTexLevelParameteriv(target, level, propertyName, &intValue);
-    jassertglsucceed(context);
+    jassertglsucceed(GLProperty<GLType>::context);
     jassert(intValue >= 0);
     return static_cast<GLType>(intValue);
   }
@@ -2586,16 +2588,16 @@ public:
   virtual GLErrorFlags getValue(GLType& param) const
   {
     const GLenum target = textureObject.getTarget();
-    if (!context.isValidTextureBindingTarget(target))
+    if (!GLProperty<GLType>::context.isValidTextureBindingTarget(target))
       {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
-    context.clearErrorFlags();
-    GLScopedSetValue<GLuint> _(context.getActiveTextureBind(target), textureObject.getId());
+    GLProperty<GLType>::context.clearErrorFlags();
+    GLScopedSetValue<GLuint> _(GLProperty<GLType>::context.getActiveTextureBind(target), textureObject.getId());
     GLErrorFlags errorFlags = _.getConstructionState();
     GLint intValue = 0;
     if (errorFlags.hasSucceed())
     {
       glGetTexLevelParameteriv(target, level, propertyName, &intValue);
-      errorFlags = context.popErrorFlags();
+      errorFlags = GLProperty<GLType>::context.popErrorFlags();
       if (errorFlags.hasSucceed())
       {
         if (intValue < 0)
@@ -2741,7 +2743,7 @@ private:
     case GL_STREAM_READ:
     case GL_STREAM_COPY:
     case GL_STATIC_DRAW:
-    case GL_STATIC_READ: 
+    case GL_STATIC_READ:
     case GL_STATIC_COPY:
     case GL_DYNAMIC_DRAW:
     case GL_DYNAMIC_READ:
@@ -2805,7 +2807,7 @@ public:
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
   }
-  
+
   // todo glGetVertexAttrib(GL_VERTEX_ATTRIB_ARRAY_ENABLED) glVertexAttrib
 
   GLErrorFlags draw(GLenum mode, GLint first, GLsizei count)
@@ -2861,7 +2863,7 @@ public:
     jassert(!id); // overwritting existing: potential memory leak
     // optimizing: here we no not need to access to OpenGL errorFlags.
     if (count < 0)
-      {jassertfalse; return GLErrorFlags::invalidValueFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     if (!context.isValidShaderType(shaderType))
       {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
     id = glCreateShader(shaderType);
@@ -2871,7 +2873,7 @@ public:
     glShaderSource(id, count, source, length);
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
-  };    
+  };
 
   virtual GLErrorFlags build()
   {
@@ -2913,21 +2915,21 @@ protected:
     {glDeleteShader(id);}
 };
 
-template <class GLShaderPropertyType, GLenum propertyName>
-class GLShaderProperty : public GLProperty<GLShaderPropertyType>
+template <class GLType, GLenum propertyName>
+class GLShaderProperty : public GLProperty<GLType>
 {
 public:
   GLShaderProperty(const GLShaderObject& shaderObject)
-    : GLProperty<GLShaderPropertyType>(shaderObject.getContext()), shaderObject(shaderObject)
+    : GLProperty<GLType>(shaderObject.getContext()), shaderObject(shaderObject)
     {jassert(shaderObject.isValid());}
 
   // Warning: possible OpenGL flush performance penalty.
   virtual GLErrorFlags getValue(GLType& param) const
   {
     GLint intValue = 0;
-    context.clearErrorFlags();
+    GLProperty<GLType>::context.clearErrorFlags();
     glGetShaderiv(shaderObject.getId(), propertyName, &intValue);
-    GLErrorFlags errorFlags = context.popErrorFlags();
+    GLErrorFlags errorFlags =  GLProperty<GLType>::context.popErrorFlags();
     if (errorFlags.hasSucceed())
     {
       if (intValue < 0)
@@ -2957,6 +2959,12 @@ GLErrorFlags GLShaderObject::getNumCharacteresOfSource(GLsizei& numCharacteresOf
 
 //////////////////////////////////////////////////////////////////////////////
 
+// Predeclaration
+template <class GLProgramUniformRegisterType, GLint size>
+class GLProgramUniformRegister;
+template <GLint numRows, GLint numColumns>
+class GLProgramUniformMatrixRegister;
+
 class GLProgramObject : public GLObject, public GLBuildableInterface, public GLValidableInterface
 {
 public:
@@ -2977,10 +2985,10 @@ public:
   GLErrorFlags createSeparable(GLenum shaderType, GLsizei count, const GLchar** source)
   {
     if (!GLEW_ARB_separate_shader_objects)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     jassert(!id); // overwritting existing: potential memory leak
     if (count < 0)
-      {jassertfalse; return GLErrorFlags::invalidValueFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     if (!context.isValidShaderType(shaderType))
       {jassertfalse; return GLErrorFlags::invalidEnumFlag;}
     id = glCreateShaderProgramv(shaderType, count, source);
@@ -3062,7 +3070,7 @@ public:
   template<GLint numRows, GLint numColumns, typename GLType>
   GLErrorFlags setUniformMatrix(GLint location, GLsizei count, GLboolean transpose, const GLType& value)
     {return GLProgramUniformMatrixRegister<numRows, numColumns>(*this, location, count, transpose).setValue(value);}
- 
+
   // properties Warning: possible OpenGL flush performance penalty.
   template<typename GLType>
   GLErrorFlags getUniformValue(GLint location, GLint size, GLsizei count, GLType value) const
@@ -3120,7 +3128,7 @@ public:
   {
     if (!isValid())
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
-    if (!isValidVariableName(name)) 
+    if (!isValidVariableName(name))
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     context.clearErrorFlags();
     location = glGetAttribLocation(id, name);
@@ -3133,18 +3141,18 @@ public:
   }
 
   // for uniforms
-  GLErrorFlags getUniformVariableLocation(const GLchar* name, GLint& location) 
+  GLErrorFlags getUniformVariableLocation(const GLchar* name, GLint& location)
   {
     if (!isValid())
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
-    if (!isValidVariableName(name)) 
+    if (!isValidVariableName(name))
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     context.clearErrorFlags();
     location = glGetUniformLocation(id, name);
     const GLErrorFlags errorFlags = context.popErrorFlags();
     if (errorFlags.hasErrors())
       {jassertfalse; return errorFlags;}
-    if (location == -1) 
+    if (location == -1)
       {jassertfalse; return GLErrorFlags::invalidValueFlag;} // compiler can remove unused uniform.
     return errorFlags;
   }
@@ -3153,7 +3161,7 @@ public:
   GLErrorFlags getSubroutineUniformLocation(GLenum shaderType, const GLchar* name, GLint& location)
   {
     if (!GLEW_ARB_shader_subroutine)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     if (!isValid())
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     if (!context.isValidShaderType(shaderType))
@@ -3162,7 +3170,7 @@ public:
     const GLErrorFlags errorFlags = context.popErrorFlags();
     if (errorFlags.hasErrors())
       {jassertfalse; return errorFlags;}
-    if (location == -1) 
+    if (location == -1)
       {jassertfalse; return GLErrorFlags::invalidValueFlag;} // compiler can remove unused uniform.
     return errorFlags;
     context.clearErrorFlags();
@@ -3173,11 +3181,11 @@ public:
   GLErrorFlags getActiveSubRoutineUniformLocations(GLenum shaderType, GLint& value) const; // number of subroutine uniforms location (less or equal to uniforms because of arrays)
   GLErrorFlags getActiveSubRoutineMaxLength(GLenum shaderType, GLint& value) const;
   GLErrorFlags getActiveSubRoutineUniformMaxLength(GLenum shaderType, GLint& value) const;
-  
+
   GLErrorFlags getSubroutineIndex(GLenum shaderType, const GLchar* name, GLuint& index)
   {
     if (!GLEW_ARB_shader_subroutine)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     if (!isValid())
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     if (!context.isValidShaderType(shaderType))
@@ -3186,8 +3194,8 @@ public:
     const GLErrorFlags errorFlags = context.popErrorFlags();
     if (errorFlags.hasErrors())
       {jassertfalse; return errorFlags;}
-    if (index == GL_INVALID_INDEX) 
-      {jassertfalse; return GLErrorFlags::invalidValueFlag;} 
+    if (index == GL_INVALID_INDEX)
+      {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     return errorFlags;
     context.clearErrorFlags();
   }
@@ -3202,21 +3210,21 @@ protected:
     {glDeleteProgram(id);}
 };
 
-template <class GLProgramPropertyType, GLenum propertyName>
-class GLProgramProperty : public GLProperty<GLProgramPropertyType>
+template <class GLType, GLenum propertyName>
+class GLProgramProperty : public GLProperty<GLType>
 {
 public:
   GLProgramProperty(const GLProgramObject& programObject)
-    : GLProperty<GLProgramPropertyType>(programObject.getContext()), programObject(programObject)
+    : GLProperty<GLType>(programObject.getContext()), programObject(programObject)
     {jassert(programObject.isValid());}
 
   // Warning: possible OpenGL flush performance penalty.
   virtual GLErrorFlags getValue(GLType& param) const
   {
     GLint intValue = 0;
-    context.clearErrorFlags();
+    GLProperty<GLType>::context.clearErrorFlags();
     glGetProgramiv(programObject.getId(), propertyName, &intValue);
-    GLErrorFlags errorFlags = context.popErrorFlags();
+    GLErrorFlags errorFlags = GLProperty<GLType>::context.popErrorFlags();
     if (errorFlags.hasSucceed())
     {
       if (intValue < 0)
@@ -3260,26 +3268,26 @@ GLErrorFlags GLProgramObject::getGeometryOutputPrimitiveType(GLsizei& geometryOu
   {return GLProgramProperty<GLsizei, GL_GEOMETRY_OUTPUT_TYPE>(*this).getValue(geometryOutputPrimitiveType);}
 // todo manage program Binary OpenGL 4.1
 
-template <class GLProgramStagePropertyType, GLenum propertyName>
-class GLProgramStageProperty : public GLProperty<GLProgramStagePropertyType>
+template <class GLType, GLenum propertyName>
+class GLProgramStageProperty : public GLProperty<GLType>
 {
 public:
   GLProgramStageProperty(const GLProgramObject& programObject, GLenum shaderType)
-    : GLProperty<GLProgramStagePropertyType>(programObject.getContext()), programObject(programObject), shaderType(shaderType)
+    : GLProperty<GLType>(programObject.getContext()), programObject(programObject), shaderType(shaderType)
   {
     jassert(programObject.isValid());
-    jassert(context.isValidShaderType(shaderType));
+    jassert(GLProperty<GLType>::context.isValidShaderType(shaderType));
   }
 
   // Warning: possible OpenGL flush performance penalty.
   virtual GLErrorFlags getValue(GLType& param) const
   {
     if (!GLEW_ARB_shader_subroutine)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     GLint intValue = 0;
-    context.clearErrorFlags();
+    GLProperty<GLType>::context.clearErrorFlags();
     glGetProgramStageiv(programObject.getId(), shaderType, propertyName, &intValue);
-    const GLErrorFlags errorFlags = context.popErrorFlags();
+    const GLErrorFlags errorFlags = GLProperty<GLType>::context.popErrorFlags();
     jassert(errorFlags.hasSucceed());
     param = static_cast<GLType>(intValue);
     return errorFlags;
@@ -3305,7 +3313,7 @@ template <class GLProgramParameterType, GLenum parameterName>
 class GLProgramParameterRegister : public GLRegister<GLProgramParameterType>
 {
 public:
-  typedef typename GLProgramParameterType GLType;
+  typedef GLProgramParameterType GLType;
 
   GLProgramParameterRegister(const GLProgramObject& programObject)
     : GLRegister<GLProgramParameterType>(programObject.getContext()), programObject(programObject)
@@ -3315,9 +3323,9 @@ public:
   virtual GLErrorFlags getValue(GLType& param) const
   {
     GLint intValue = 0;
-    context.clearErrorFlags();
+    GLRegister<GLType>::context.clearErrorFlags();
     glGetProgramiv(programObject.getId(), parameterName, &intValue);
-    GLErrorFlags errorFlags = context.popErrorFlags();
+    GLErrorFlags errorFlags = GLRegister<GLType>::context.popErrorFlags();
     if (errorFlags.hasSucceed())
     {
       if (intValue < 0)
@@ -3332,13 +3340,13 @@ public:
   virtual GLErrorFlags setValue(const GLType& param)
   {
     if (!GLEW_ARB_separate_shader_objects)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1) 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} // // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
     if (param < 0)
 		  return GLErrorFlags::invalidValueFlag;
     if (!programObject.getId())
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     glProgramParameteri(programObject.getId(), parameterName, param);
-    jassertglsucceed(context);
+    jassertglsucceed(GLRegister<GLType>::context);
     return GLErrorFlags::succeed;
   }
 
@@ -3361,7 +3369,7 @@ template <class GLProgramUniformRegisterType, GLint size>
 class GLProgramUniformRegister : public GLRegister<GLProgramUniformRegisterType>
 {
 public:
-  typedef typename GLProgramUniformRegisterType GLType;
+  typedef GLProgramUniformRegisterType GLType;
 
   GLProgramUniformRegister(const GLProgramObject& programObject, GLint location, GLsizei count)
     : GLRegister<GLProgramUniformRegisterType>(programObject.getContext())
@@ -3378,8 +3386,8 @@ public:
     if (!program)
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
 
-    GLScopedSetValue<GLenum> _(context.getActiveProgramBind(), program);
-    
+    GLScopedSetValue<GLenum> _(GLRegister<GLProgramUniformRegisterType>::context.getActiveProgramBind(), program);
+
     switch (size)
     {
     case 1: setUniform1d(location, count, param); break;
@@ -3387,10 +3395,10 @@ public:
     case 3: setUniform3d(location, count, param); break;
     case 4: setUniform4d(location, count, param); break;
     default:
-      jassertfalse; // unknow uniform size type 
+      jassertfalse; // unknow uniform size type
     }
-    
-    jassertglsucceed(context);
+
+    jassertglsucceed(GLRegister<GLProgramUniformRegisterType>::context);
     return GLErrorFlags::succeed;
   }
 
@@ -3440,7 +3448,7 @@ class GLProgramUniformMatrixRegister : public GLRegister<GLfloat*>
 {
 public:
 
-  typedef typename GLfloat* GLType;
+  typedef GLfloat* GLType;
 
   GLProgramUniformMatrixRegister(const GLProgramObject& programObject, GLint location, GLsizei count, GLboolean transpose)
     : GLRegister<GLType>(programObject.getContext())
@@ -3466,7 +3474,7 @@ public:
       {jassertfalse; return GLErrorFlags::invalidValueFlag;}
 
     GLScopedSetValue<GLenum> _(context.getActiveProgramBind(), program);
-    
+
     if (numRows == 2 && numColumns == 2)
       glUniformMatrix2fv(location, count, transpose, param);
     else if (numRows == 3 && numColumns == 3)
@@ -3486,8 +3494,8 @@ public:
     else if (numRows == 4 && numColumns == 3)
       glUniformMatrix4x3fv(location, count, transpose, param);
     else
-      {jassertfalse;}  // unknow uniform size type 
-    
+      {jassertfalse;}  // unknow uniform size type
+
     jassertglsucceed(context);
     return GLErrorFlags::succeed;
   }
@@ -3508,16 +3516,20 @@ private:
 
 //////////////////////////////////////////////////////////////////////////////
 
+// Predeclaration
+template <class GLProgramPipelineUniformRegisterType, GLint size>
+class GLProgramPipelineUniformRegister;
+
 class GLProgramPipelineObject : public GLObject, public GLValidableInterface
 {
 public:
   GLProgramPipelineObject(GLContext& context)
-    : GLObject(context) {} 
+    : GLObject(context) {}
 
   GLErrorFlags create()
   {
     if (!GLEW_ARB_separate_shader_objects) // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     jassert(!id); // overwritting existing: potential memory leak
     // optimizing: here we no not need to access to OpenGL errorFlags.
     glGenProgramPipelines(1, &id);
@@ -3530,9 +3542,9 @@ public:
   GLErrorFlags linkToProgram(GLbitfield stages, GLuint program)
   {
     if (!GLEW_ARB_separate_shader_objects) // this is not an OpenGL3.3 feature (ARB extension included in OpenGL 4.1)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     if (!isValidStagesBitField(stages))
-      {jassertfalse; return GLErrorFlags::invalidValueFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidValueFlag;}
     if (!id || !program)
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     jassert(isValid());
@@ -3551,7 +3563,7 @@ public:
     return GLErrorFlags::succeed;
   }
 
-  // specifies the program that Uniform* commands will update. 
+  // specifies the program that Uniform* commands will update.
   // Prefere ProgramUniform* interface to reduces API overhead.
   GLErrorFlags getActiveProgram(GLuint& program) const;
   GLErrorFlags setActiveProgram(GLuint program);
@@ -3590,7 +3602,7 @@ public:
   {
     if (stages == GL_ALL_SHADER_BITS)
       return true;
-    return (stages & ~(GL_VERTEX_SHADER_BIT | 
+    return (stages & ~(GL_VERTEX_SHADER_BIT |
                        GL_TESS_CONTROL_SHADER_BIT |
                        GL_TESS_EVALUATION_SHADER_BIT |
                        GL_GEOMETRY_SHADER_BIT |
@@ -3609,7 +3621,7 @@ template <class GLProgramPipelinePropertyType, GLenum propertyName, GLint defaul
 class GLProgramPipelineProperty : public GLProperty<GLProgramPipelinePropertyType>
 {
 public:
-  typedef typename GLProgramPipelinePropertyType GLType;
+  typedef GLProgramPipelinePropertyType GLType;
 
   GLProgramPipelineProperty(const GLProgramPipelineObject& pipelineObject)
     : GLProperty<GLProgramPipelinePropertyType>(pipelineObject.getContext()), pipelineObject(pipelineObject)
@@ -3622,14 +3634,14 @@ public:
   virtual GLErrorFlags getValue(GLType& param) const
   {
     if (!GLEW_ARB_separate_shader_objects)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     if (!pipelineObject.getId())
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     jassert(pipelineObject.isValid());
-    context.clearErrorFlags();
+    GLProperty<GLProgramPipelinePropertyType>::context.clearErrorFlags();
     GLint intValue = defaultValue;
     glGetProgramPipelineiv(pipelineObject.getId(), GL_ACTIVE_PROGRAM, &intValue);
-    GLErrorFlags errorFlags = context.popErrorFlags();
+    GLErrorFlags errorFlags = GLProperty<GLProgramPipelinePropertyType>::context.popErrorFlags();
     if (errorFlags.hasSucceed())
     {
       if (intValue < 0)
@@ -3655,7 +3667,7 @@ class GLProgramPipelineActiveProgramRegister : public GLRegister<GLuint>
 public:
   GLProgramPipelineActiveProgramRegister(const GLProgramPipelineObject& pipelineObject)
     : GLRegister<GLuint>(pipelineObject.getContext()), pipelineObject(pipelineObject) {}
-   
+
   virtual GLuint getDefaultValue() const
     {return 0;} // TODO check specification
 
@@ -3663,12 +3675,12 @@ public:
   virtual GLErrorFlags getValue(GLuint& program) const
   {
     if (!GLEW_ARB_separate_shader_objects)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     if (!pipelineObject.getId())
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     jassert(pipelineObject.isValid());
     context.clearErrorFlags();
-    GLint intValue = 0; // TODO check specification 
+    GLint intValue = 0; // TODO check specification
     glGetProgramPipelineiv(pipelineObject.getId(), GL_ACTIVE_PROGRAM, &intValue);
     GLErrorFlags errorFlags = context.popErrorFlags();
     if (errorFlags.hasSucceed())
@@ -3681,13 +3693,13 @@ public:
     program = static_cast<GLuint>(intValue);
     return errorFlags;
   }
-  // todo manage property with glGetProgramPipelineiv and GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER, 
-  // GL_TESS_EVALUATION_SHADER GL_GEOMETRY_SHADER,and GL_FRAGMENT_SHADER 
+  // todo manage property with glGetProgramPipelineiv and GL_VERTEX_SHADER, GL_TESS_CONTROL_SHADER,
+  // GL_TESS_EVALUATION_SHADER GL_GEOMETRY_SHADER,and GL_FRAGMENT_SHADER
 
   virtual GLErrorFlags setValue(const GLuint& program)
   {
     if (!GLEW_ARB_separate_shader_objects)
-      {jassertfalse; return GLErrorFlags::invalidOperationFlag;} 
+      {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     if (!pipelineObject.getId() || !program)
       {jassertfalse; return GLErrorFlags::invalidOperationFlag;}
     jassert(pipelineObject.isValid());
@@ -3710,7 +3722,7 @@ template <class GLProgramPipelineUniformRegisterType, GLint size>
 class GLProgramPipelineUniformRegister : public GLRegister<GLProgramPipelineUniformRegisterType>
 {
 public:
-  typedef typename GLProgramPipelineUniformRegisterType GLType;
+  typedef GLProgramPipelineUniformRegisterType GLType;
 
   GLProgramPipelineUniformRegister(const GLProgramPipelineObject& pipelineObject, GLuint program, GLint location, GLsizei count)
     : GLRegister<GLProgramPipelineUniformRegisterType>(pipelineObject.getContext())
@@ -3734,10 +3746,10 @@ public:
     case 3: setUniform3d(program, location, count, param); break;
     case 4: setUniform4d(program, location, count, param); break;
     default:
-      jassertfalse; // unknow uniform size type 
+      jassertfalse; // unknow uniform size type
     }
-    
-    jassertglsucceed(context);
+
+    jassertglsucceed(GLRegister<GLProgramPipelineUniformRegisterType>::context);
     return GLErrorFlags::succeed;
   }
 

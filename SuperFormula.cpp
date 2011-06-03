@@ -61,7 +61,7 @@ public:
       superFormula3d = formula;
     }
 
-  virtual void draw() 
+  virtual void draw()
   {
     context.clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     context.getCullFace().setValue(cullFace);
@@ -89,7 +89,7 @@ public:
 
     const GLfloat vGreen[] = {0.0f, 1.0f, 0.0f, 1.0f};
     const GLfloat vBlack[] = {0.0f, 0.0f, 0.0f, 1.0f};
-    if (nStep < 4) 
+    if (nStep < 4)
     {
       succeed = flatColorTransformShader.setUniformValue(vColorLocation, 4, 1, vBlack).hasSucceed();
       jassert(succeed);
@@ -117,7 +117,7 @@ public:
 
       succeed = superFormulaVertexArray.draw(primitive, 0, superFormulaNumVertices).hasSucceed();
       jassert(succeed);
-    
+
       // Draw black outline
       context.getPolygonOffset().setValue(docgl::GLPolygonOffset(-1.0f, -1.0f));      // Shift depth values
       context.getLinePolygonOffset().setValue(true);
@@ -134,13 +134,13 @@ public:
 
       succeed = superFormulaVertexArray.draw(GL_LINE_STRIP, 0, superFormulaNumVertices).hasSucceed();
       jassert(succeed);
-    
+
       // Put everything back the way we found it
       context.getLinePolygonOffset().setValue(false);
       context.getPolygonOffset().setValue(docgl::GLPolygonOffset(0.0f, 0.0f));
     }
   }
-  
+
   void constructSuperMesh(const SuperFormula3D& s, bool invertCoordinate)
   {
     GLfloat computeBuffer[superFormulaNumVertices][3];
@@ -185,7 +185,7 @@ public:
     jassert(succeed);
   }
 
-  virtual void keyPressed(unsigned char key) 
+  virtual void keyPressed(unsigned char key)
   {
     bool invalidateMesh = false;
     if (key == 27)
@@ -234,7 +234,7 @@ public:
     else if (key == 'G')
       {superFormula3d.n2 = max(0.f, superFormula3d.n2 - 0.1f); invalidateMesh = true;}
     else if (key == 'T')
-      {superFormula3d.n2 = min(20.f, superFormula3d.n2 + 0.1f); invalidateMesh = true;}          
+      {superFormula3d.n2 = min(20.f, superFormula3d.n2 + 0.1f); invalidateMesh = true;}
     else if (key == 'H')
       {superFormula3d.n3 = max(0.f, superFormula3d.n3 - 0.1f); invalidateMesh = true;}
     else if (key == 'Y')
@@ -244,13 +244,13 @@ public:
       constructSuperMesh(superFormula3d, invertCoordinate);
   }
 
-  virtual void resized(int w, int h) 
+  virtual void resized(int w, int h)
   {
     context.getActiveViewport().setValue(docgl::GLRegion(w, h));
     projectionMatrix = glm::perspective(35.0f, float(w) / float(h), 1.0f, 100.f);
   }
 
-  virtual void closed() 
+  virtual void closed()
     {wantExit = true;}
 
   void SetupRC()
@@ -263,21 +263,21 @@ public:
     constructSuperMesh(superFormula3d, invertCoordinate);
 
     // compile shader with attribute
-    static const GLchar* transformVertexShader = 
+    static const GLchar* transformVertexShader =
       "uniform mat4 mvpMatrix;"
       "attribute vec4 vVertex;"
 	    ""
       "void main(void) "
       "  {gl_Position = mvpMatrix * vVertex;}";
-	
+
   #ifdef DOCGL4_1
-    static const GLchar* coloredFragmentShader = 
+    static const GLchar* coloredFragmentShader =
       "#version 410\n"
       ""
       "subroutine vec4 getColorSubRoutine();"
       ""
       "uniform vec4 vColor;"
-      "subroutine uniform getColorSubRoutine getColorFunction;"    
+      "subroutine uniform getColorSubRoutine getColorFunction;"
       ""
       "subroutine(getColorSubRoutine)"
       "vec4 getUniformColor()"
@@ -290,7 +290,7 @@ public:
       "void main(void) "
       "  {gl_FragColor = getColorFunction();}";
   #else // !DOCGL4_1
-    static const GLchar* coloredFragmentShader = 
+    static const GLchar* coloredFragmentShader =
       "uniform vec4 vColor;"
       ""
       "void main(void) "
@@ -326,18 +326,18 @@ public:
   }
 };
 
-int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
+int superFormula(const char* szClassName, int left, int top, int right, int bottom)
 {
   Globals g;
   OpenGLWindow window(g.context);
 
-  if (!window.create(g, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom, szClassName))
+  if (!window.create(g, left, top, right, bottom, szClassName))
   {
     printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
     jassertfalse;
     return 2;
   }
-  
+
   if (g.context.initialize().hasErrors())
   {
     window.destroy();
@@ -368,17 +368,17 @@ int superFormula(LPCTSTR szClassName, CONST RECT& clientRect)
   printf("[ESC] exit\n");
 
   g.SetupRC();
-  g.resized(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
-  
+  g.resized(right - left, bottom - top);
+
   BOOL threadCanLoop;
-  do 
-  { 
+  do
+  {
     if (!docwgl::dispatchNextThreadMessage(threadCanLoop) && threadCanLoop)
     {
       g.draw(); // no message to dispatch: render the scene.
 	  	window.swapBuffers(); // Flush drawing commands
     }
-    Sleep(0); // yeld to other thread -> check if it's realy needed.
+    // Sleep(0); // yeld to other thread -> TODO check if it's realy needed.
   }
   while (!g.wantExit);
   g.ShutdownRC();

@@ -4,26 +4,26 @@
 | Started  : 25/01/2011 10:09       |                                          |
 ` --------------------------------- . --------------------------------------- */
 
-#include <windows.h>
+#ifdef WIN32
+# include <windows.h>
+#endif // WIN32
 
-extern int bounceMain(LPCTSTR szClassName);
-extern int superFormula(LPCTSTR szClassName, CONST RECT& clientRect);
+extern int bounceMain(const char* szClassName);
+extern int superFormula(const char* szClassName, int left, int top, int right, int bottom);
 
 
+#ifdef GLEW_MX
 DWORD WINAPI threadedMain(LPVOID lpThreadParameter)
-{
-  CONST RECT clientRect = {1920, 0, 1920 + 800, 600};
-  return superFormula(TEXT("OGL_THREADED_CLASS"), clientRect);
-}
+  {return superFormula("OGL_THREADED_CLASS", 1920, 0, 1920 + 800, 600);}
+#endif // GLEW_MX
 
 int main()
 {
-  CONST RECT clientRect = {0, 0, 800, 600};
 #ifdef GLEW_MX
   HANDLE thread = CreateThread(NULL, 0, threadedMain, NULL, 0, NULL); // launch threaded window
-#endif // GLEW_MX
   Sleep(1000);
-  int ret = superFormula(TEXT("OGL_CLASS"), clientRect);  // launch current thread window
+#endif // GLEW_MX
+  int ret = superFormula("OGL_CLASS", 0, 0, 800, 600);  // launch current thread window
 
 #ifdef GLEW_MX
   WaitForSingleObject(thread, INFINITE);    // wait end of threaded window thread
