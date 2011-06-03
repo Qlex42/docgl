@@ -10,11 +10,12 @@
 
 #define PI 3.14159265
 
-
-typedef struct // RenderContext
+class RenderContext : public docglx::OpenGLWindowCallback
 {
+public:
   void setupGLState()
   {
+    running = True;
     nMousePosX = 0;
     nMousePosY = 0;
     glClearColor(0.0f, 1.0f, 1.0f, 1.0f);
@@ -27,7 +28,7 @@ typedef struct // RenderContext
     glLoadIdentity();
   }
 
-  void resized(int width, int height)
+  virtual void resized(int width, int height)
   {
     nWinWidth = width;
     nWinHeight = height;
@@ -45,7 +46,7 @@ typedef struct // RenderContext
     update();
   }
 
-  void mouseMove(int x, int y)
+  virtual void mouseMove(int x, int y)
   {
     nMousePosX = x;
     nMousePosY = y;
@@ -106,7 +107,7 @@ typedef struct // RenderContext
     glEnd();
   }
 
-  void draw()
+  virtual void draw()
   {
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -157,7 +158,14 @@ typedef struct // RenderContext
       glVertex2f(0.5, -1.0);
     glEnd();
   }
+  
+  virtual void keyPressed(unsigned char /* key */) 
+    {running = False;}
 
+  virtual void closed()
+    {running = False;}
+
+  Bool running;
   int nWinWidth;
   int nWinHeight;
   int nMousePosX;
@@ -166,15 +174,12 @@ typedef struct // RenderContext
   float fRightY;
   float fLeftX;
   float fLeftY;
-} RenderContext;
-
+};
 
 int main()
 {
-  Bool bWinMapped = False;
-  Bool running = True;
   RenderContext rcx;
-  OpenGLXWindow window;
+  docglx::OpenGLXWindow window;
   static const int config_attrib_list[] = {
                   GLX_RENDER_TYPE,   GLX_RGBA_BIT,
                   GLX_X_RENDERABLE,  True,
@@ -192,7 +197,7 @@ int main()
     0};
 
   // Setup X window and GLX context
-  if (!window.createWindow(NULL, 400, 200, config_attrib_list, context_attrib_list, NULL))
+  if (!window.create(rcx, NULL, 400, 200, config_attrib_list, context_attrib_list, NULL))
   {
     fprintf(stderr, "Error: could not create window\n");
     return 1;
@@ -202,45 +207,18 @@ int main()
   rcx.resized(400, 200);
 
   // Execute loop the whole time the app runs
-  while (running)
+  docglx::EventDispatcher eventDispatcher(&window, 1);
+  while (rcx.running)
   {
-    XEvent newEvent;
-    XWindowAttributes winData;
-
-    // Watch for new X events
-    XNextEvent(window.dpy, &newEvent);
-    switch (newEvent.type)
-    {
-    case UnmapNotify:
-      bWinMapped = False;
-      break;
-    case MapNotify :
-      bWinMapped = True;
-      break;
-    case ConfigureNotify:
-      XGetWindowAttributes(window.dpy, window.win, &winData);
-      rcx.resized(winData.width, winData.height);
-      break;
-    case MotionNotify:
-      rcx.mouseMove(newEvent.xmotion.x, newEvent.xmotion.y);
-      break;
-    case KeyPress:
-    case DestroyNotify:
-      running = False;
-      break;
-    }
-
-    if (bWinMapped && running)
+    eventDispatcher.dispatchNextEvent();
+    if (window.mapped && rcx.running)
     {
       rcx.draw();
       window.swapBuffer();
     }
   }
-  window.destroyWindow();
-  // TODO: To fix close window button, use XChangeProperty(), add the WM_DELETE_WINDOW message to the WM_PROTOCOLS events.
-  // This should avoid following error:
-  // XIO:  fatal IO error 11 (Resource temporarily unavailable) on X server ":0"
-  //   after 48 requests (48 known processed) with 0 events remaining.
+  window.destroy();
+  printf("Ended\n");
   return 0;
 }
 
