@@ -48,7 +48,7 @@
 # endif // !__APPLE__
 
 # ifdef linux
-#  include <glew.h>
+#  include <GL/glew.h>
 # endif // !linux
 
 # if defined(DEBUG) || defined(_DEBUG)
