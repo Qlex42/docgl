@@ -6,8 +6,8 @@
 #ifndef DOCWGL_H_
 # define DOCWGL_H_
 
-# include "Docgl.h"
-# include "DocglWindowCallback.h"
+# include <Docgl/Docgl.h>
+# include <Docgl/DocglWindowCallback.h>
 # include <gl\wglew.h>
 # include <Windowsx.h>
 
@@ -34,7 +34,7 @@ struct OpenWGLWindow
   ** @return TRUE on succeed. Call OpenWGLWindow::destroy for freeing required memory. 
   **   Else return FALSE. Call GetLastError to get extended error information.
   */
-  BOOL create(OpenWGLWindowCallback& windowCallback,
+  BOOL create(OpenGLWindowCallback& windowCallback,
               LPCTSTR className, const RECT& bounds, DWORD style, DWORD extentedStyle, 
               const int* pixelFormatAttributes, const int* contextAttributes,
               HGLRC shareContext = NULL, LPCTSTR caption = NULL, 
@@ -228,7 +228,7 @@ struct OpenWGLWindow
   HWND         hWnd;
   HDC          hDC;
   HGLRC        hGLRC;
-  OpenWGLWindowCallback* windowCallback;
+  OpenGLWindowCallback* windowCallback;
 }; // struct OpenWGLWindow
 
 //////////////////////////////// TOOLS ////////////////////////////////////////
@@ -346,6 +346,7 @@ BOOL dispatchNextThreadMessage(BOOL& threadCanLoop)
       DispatchMessage(&msg);
     }
   }
+  //Sleep(0); // yeld to other thread -> TODO check if it's realy needed.
   return returnValue;
 }
 

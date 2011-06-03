@@ -10,10 +10,10 @@
 ** OpenGL Window message callback class.
 ** All callback function is called in the dispatching thread with current window OpenGL context.
 */
-class OpenWGLWindowCallback
+class OpenGLWindowCallback
 {
 public:
-  virtual ~OpenWGLWindowCallback() {}
+  virtual ~OpenGLWindowCallback() {}
   virtual void draw() {}
   virtual void keyPressed(unsigned char /* key */) {}
   virtual void resized(int /* width */ , int /* height */) {}

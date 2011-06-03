@@ -8,13 +8,12 @@
 # include <windows.h>
 #endif // WIN32
 
-extern int bounceMain(const char* szClassName);
-extern int superFormula(const char* szClassName, int left, int top, int right, int bottom);
-
+extern int bounceMain(const char* szClassName, int x, int y, int width, int height);
+extern int superFormula(const char* szClassName, int x, int y, int width, int height);
 
 #ifdef GLEW_MX
 DWORD WINAPI threadedMain(LPVOID lpThreadParameter)
-  {return superFormula("OGL_THREADED_CLASS", 1920, 0, 1920 + 800, 600);}
+  {return superFormula("OGL_THREADED_CLASS", 50, 50, 800, 600);}
 #endif // GLEW_MX
 
 int main()

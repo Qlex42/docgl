@@ -8,14 +8,14 @@
 
 # ifdef WIN32
 
-#  include "Docwgl.h"
+#  include <Docgl/Docwgl.h>
 
 struct OpenGLWindow
 {
 public:
   OpenGLWindow(docgl::GLContext& context)
     : window(context) {}
-  bool create(OpenWGLWindowCallback& windowCallback, int x, int y, int width, int height, const char* className)
+  bool create(OpenGLWindowCallback& windowCallback, int x, int y, int width, int height, const char* className)
   {
     this->className = className;
     if(!docwgl::registerOpenWGLWindowClass(className, GetModuleHandle(NULL), LoadCursor(NULL, IDC_ARROW)))
@@ -57,8 +57,8 @@ public:
     RECT clientRect;
     clientRect.left = x;
     clientRect.top = y;
-    clientRect.right = width;
-    clientRect.bottom = height;
+    clientRect.right = x + width;
+    clientRect.bottom = y + height;
     RECT windowRect = clientRect;
     AdjustWindowRectEx(&windowRect, windowStyle, FALSE, extendedWindowStyle);
     OffsetRect(&windowRect, clientRect.left - windowRect.left, clientRect.top - windowRect.top);
@@ -93,9 +93,14 @@ private:
 
 class EventDispatcher
 {
+public:
   EventDispatcher(OpenGLWindow* windowsList, size_t windowsCount)
     {}
   
+  /** 
+  ** Dispatch next messages.
+  ** @return true if a message was dispatched, false if the message queue is empty.
+  */
   bool dispatchNextEvent()
   {
     BOOL threadCanLoop; // ignore

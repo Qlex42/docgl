@@ -3,7 +3,7 @@
 | Author   : Alexandre Buge         |                                          |
 | Started  : 25/01/2011 10:09       |                                          |
 ` --------------------------------- . --------------------------------------- */
-# include "Docgl.h"
+# include <Docgl/Docgl.h>
 
 # define GLM_SWIZZLE_XYZW // for .xyz
 # include <glm/glm.hpp> //vec3, vec4, ivec4, mat4

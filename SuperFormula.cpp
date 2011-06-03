@@ -6,15 +6,15 @@
 
 # define  _USE_MATH_DEFINES
 # include "Tools.h"
-# include "Docgl.h"
-# include "DocglWindow.h"
+# include <Docgl/Docgl.h>
+# include <Docgl/DocglWindow.h>
 
 struct SuperFormula3D
   {float a, b, m, n1, n2, n3;};
 static const float step = 0.05f;
 enum {superFormulaNumVertices = 7938}; // depends from step
 
-class Globals: public OpenWGLWindowCallback
+class Globals: public OpenGLWindowCallback
 {
 public:
   docgl::GLDirectContext context;
@@ -188,32 +188,32 @@ public:
   virtual void keyPressed(unsigned char key)
   {
     bool invalidateMesh = false;
-    if (key == 27)
+    if (key == 0x1B) // Escape
       wantExit = true;
-    if (key == VK_F1)
+    if (key == 0x70) // F1
 	  {
 		  ++nStep;
 		  if(nStep > 9)
 			  nStep = 0;
       invalidateMesh = true;
     }
-    if (key == VK_F2)
+    if (key == 0x71) // F2
       {invertCoordinate = !invertCoordinate; invalidateMesh = true;}
-    if (key == VK_F3)
+    if (key == 0x72) // F3
       cullFace = !cullFace;
-    if (key == VK_F4)
+    if (key == 0x73) // F4
       depthTest = !depthTest;
   #ifdef DOCGL4_1
-    if (key == VK_F5)
+    if (key == 0x74) // F5
       invertColor = !invertColor;
   #endif // !DOCG4_1
-    if(key == VK_UP)
+    if(key == 0x26) // Up
 	    objectFrame.rotateWorld(-5.0f, 1.0f, 0.0f, 0.0f);
-    if(key == VK_DOWN)
+    if(key == 0x29) // down
 	    objectFrame.rotateWorld(5.0f, 1.0f, 0.0f, 0.0f);
-    if(key == VK_LEFT)
+    if(key == 0x25) // left
 	    objectFrame.rotateWorld(-5.0f, 0.0f, 1.0f, 0.0f);
-    if(key == VK_RIGHT)
+    if(key == 0x27) // right
 	    objectFrame.rotateWorld(5.0f, 0.0f, 1.0f, 0.0f);
     if (key == 'Q')
       {superFormula3d.a = max(0.f, superFormula3d.a - 0.01f); invalidateMesh = true;}
@@ -326,16 +326,16 @@ public:
   }
 };
 
-int superFormula(const char* szClassName, int left, int top, int right, int bottom)
+int superFormula(const char* szClassName, int x, int y, int width, int height)
 {
   Globals g;
   OpenGLWindow window(g.context);
 
-  if (!window.create(g, left, top, right, bottom, szClassName))
+  if (!window.create(g, x, y, width, height, szClassName))
   {
     printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
     jassertfalse;
-    return 2;
+    return 1;
   }
 
   if (g.context.initialize().hasErrors())
@@ -368,17 +368,17 @@ int superFormula(const char* szClassName, int left, int top, int right, int bott
   printf("[ESC] exit\n");
 
   g.SetupRC();
-  g.resized(right - left, bottom - top);
+  g.resized(width, height);
 
-  BOOL threadCanLoop;
+
+  EventDispatcher dispatcher(&window, 1);
   do
   {
-    if (!docwgl::dispatchNextThreadMessage(threadCanLoop) && threadCanLoop)
+    if (!dispatcher.dispatchNextEvent())
     {
       g.draw(); // no message to dispatch: render the scene.
 	  	window.swapBuffers(); // Flush drawing commands
     }
-    // Sleep(0); // yeld to other thread -> TODO check if it's realy needed.
   }
   while (!g.wantExit);
   g.ShutdownRC();

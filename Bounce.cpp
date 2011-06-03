@@ -4,7 +4,7 @@
 | Started  : 25/01/2011 10:09       |                                          |
 ` --------------------------------- . --------------------------------------- */
 #include "Tools.h"
-#include "Docwgl.h"
+#include <Docgl/DocglWindow.h>
 
 ////////////////////////  OpenGL Context caching test ////////////////////////// 
 
@@ -36,7 +36,7 @@ public:
 
 ////////////////////////  Some VBO with shader tests ////////////////////////// 
 
-struct Globals : public docwgl::OpenGLWindowCallback
+struct Globals : public OpenGLWindowCallback
 {
   ClientWithTooMuchRowByteAligmentChangeContext context;
   docgl::GLBufferObject squareVertexBuffer;
@@ -51,6 +51,7 @@ struct Globals : public docwgl::OpenGLWindowCallback
   GLfloat blockSize;
   GLfloat vVerts[12];
   GLfloat texCoord[8];
+  bool wantExit;
 
   Globals()
     : squareVertexBuffer(context)
@@ -62,6 +63,8 @@ struct Globals : public docwgl::OpenGLWindowCallback
     , squarePipeline(context)
     , sceneSetupComplete(false)
     , blockSize(0.1f)
+    , wantExit(false)
+
   {
 
     const GLfloat initvVerts[12] = {-blockSize - 0.5f, -blockSize, 0.0f, 
@@ -279,69 +282,33 @@ virtual void resized(int w, int h)
   virtual void keyPressed(unsigned char key) 
   {
     bool invalidateMesh = false;
-    if (key == 27)
-      docwgl::postQuitThreadMessage();
+    if (key == 0x1B) // Escape
+      wantExit = true;
   }
 
   virtual void closed() 
-  {
-    docwgl::postQuitThreadMessage();
-  }
+    {wantExit = true;}
 };
 
-int bounceMain(LPCTSTR szClassName)
+int bounceMain(const char* szClassName, int x, int y, int width, int height)
 {
   Globals g;
+  OpenGLWindow window(g.context);
 
-  HINSTANCE module = GetModuleHandle(NULL);
-  if(!docwgl::registerOpenGLWindowClass(szClassName, module, LoadCursor(NULL, IDC_ARROW)))
-  {
-    printf("Unable to register window class.\n");
-    return 1;
-  }
-
-  // Specify the important attributes we care about
-  const int pixelFormatAttributes[] = {
-    WGL_SUPPORT_OPENGL_ARB, 1, // Must support OGL rendering
-    WGL_DRAW_TO_WINDOW_ARB, 1, // pf that can run a window
-    WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB, // must be HW accelerated
-    WGL_RED_BITS_ARB,       8, // 8 bits of red precision in window
-    WGL_GREEN_BITS_ARB,     8, // 8 bits of green precision in window
-    WGL_BLUE_BITS_ARB,      8, // 8 bits of blue precision in window
-    //WGL_ALPHA_BITS_ARB, 8, 
-    //WGL_COLOR_BITS_ARB,     24, // 8 bits of each R, G and B
-    WGL_DEPTH_BITS_ARB,     16, // 16 bits of depth precision for window
-    WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB, // pf should be RGBA type
-    WGL_DOUBLE_BUFFER_ARB,	GL_TRUE, // Double buffered context
-    WGL_SWAP_METHOD_ARB,    WGL_SWAP_EXCHANGE_ARB, // double buffer swap (more speed ?)
-    WGL_SAMPLE_BUFFERS_ARB, GL_TRUE, // MSAA on
-    WGL_SAMPLES_ARB,        8, // 8x MSAA 
-    0
-  }; // NULL termination
-  const int contextAttributes[] = {
-    WGL_CONTEXT_MAJOR_VERSION_ARB,  3,
-    WGL_CONTEXT_MINOR_VERSION_ARB,  3,
-    WGL_CONTEXT_PROFILE_MASK_ARB, WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-    //WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB,
-    0};
-
-  CONST RECT clientRect = {0, 0, 800, 600};
-  DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_VISIBLE;
-  DWORD extendedWindowStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
-
-  // ajust windows size and position depending to wanted client size and position.
-  RECT windowRect = clientRect;
-  AdjustWindowRectEx(&windowRect, windowStyle, FALSE, extendedWindowStyle);
-  OffsetRect(&windowRect, clientRect.left - windowRect.left, clientRect.top - windowRect.top);
-
-  docwgl::OpenWGLWindow openGLWindow(g.context);
-  if (!openGLWindow.create(g, szClassName, windowRect, windowStyle, 
-    extendedWindowStyle, pixelFormatAttributes, contextAttributes))
+  if (!window.create(g, x, y, width, height, szClassName))
   {
     printf("Error: 0x%08X Unable to create OpenGL Window.\n", (int)GetLastError());
-    openGLWindow.destroy();
+    jassertfalse;
+    return 1;
+  }
+  if (g.context.initialize().hasErrors())
+  {
+    window.destroy();
+    jassertfalse;
+    fprintf(stderr, "GLContext initialize error\n");
     return 2;
   }
+
 
   if (g.context.initialize().hasErrors())
   {
@@ -396,23 +363,21 @@ int bounceMain(LPCTSTR szClassName)
   destroyPackedImage(imageData);
   
   g.SetupRC();
-  BOOL threadCanLoop;
-  do 
-  { 
-    if (!docwgl::dispatchNextThreadMessage(threadCanLoop) && threadCanLoop)
+
+  EventDispatcher dispatcher(&window, 1);
+  do
+  {
+    if (!dispatcher.dispatchNextEvent())
     {
       g.draw(); // no message to dispatch: render the scene.
-	  	openGLWindow.swapBuffers(); // Flush drawing commands
+	  	window.swapBuffers(); // Flush drawing commands
       g.BounceFunction(); // compute changes
     }
-    Sleep(0); // yeld to other thread -> check if it's realy needed.
   }
-  while (threadCanLoop);
+  while (!g.wantExit);
   g.ShutdownRC();
 
-  openGLWindow.destroy();
-  // Delete the window class
-  UnregisterClass(szClassName, module);
+  window.destroy();
   return 0;
 }
 
