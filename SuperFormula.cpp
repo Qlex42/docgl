@@ -15,8 +15,8 @@ static const float step = 0.05f;
 enum {superFormulaNumVertices = 7938}; // depends from step
 
 #ifdef linux
-using std::max;
-using std::min;
+#define max(X, Y) ((X) > (Y) ? (X) : (Y))
+#define min(X, Y) ((X) < (Y) ? (X) : (Y))
 #endif // linux
 
 class Globals: public OpenGLWindowCallback
@@ -75,7 +75,7 @@ public:
     bool succeed;
     glm::mat4 modelViewProjection = projectionMatrix * cameraFrame.getCameraMatrix() * objectFrame.getMatrix();
     succeed = flatColorTransformShader.setUniformMatrix<4, 4>(mvpMatrixLocation, 1, GL_FALSE, &modelViewProjection[0][0]).hasSucceed();
-    jassert(succeed);
+    glUniformMatrix4fv(mvpMatrixLocation, 1, GL_FALSE, &modelViewProjection[0][0]);
 
     GLenum primitive;
     switch (nStep)
@@ -146,20 +146,21 @@ public:
     }
   }
 
+
+
   void constructSuperMesh(const SuperFormula3D& s, bool invertCoordinate)
   {
-    GLfloat computeBuffer[superFormulaNumVertices][3];
-
+    static GLfloat computeBuffer[superFormulaNumVertices][3];
     int veccount = 0;
     if (invertCoordinate)
     {
-      for (float j = float(-M_PI / 2); j < M_PI / 2; j += step)
+      for (float j = float(-M_PI / 2.f); j < M_PI / 2.f; j += step)
         for (float i = float(-M_PI); i < M_PI; i += step)
         {
-          const float raux1 = pow(abs(1.f / s.a * cos(s.m * i / 4.f)), s.n2) + pow(abs(1.f / s.b * sin(s.m * i / 4.f)), s.n3);
-          const float r1 = pow(abs(raux1), (-1.f / s.n1));
-          const float raux2 = pow(abs(1.f / s.a * cos(s.m * j / 4.f)), s.n2) + pow(abs(1.f / s.b * sin(s.m * j / 4.f)), s.n3);
-          const float r2 = pow(abs(raux2), (-1.f / s.n1));
+           float raux1 = pow(std::abs(1.f / s.a * cos(s.m * i / 4.f)), s.n2) + pow(std::abs(1.f / s.b * sin(s.m * i / 4.f)), s.n3);
+           float r1 = pow(std::abs(raux1), (-1.f / s.n1));
+           float raux2 = pow(std::abs(1.f / s.a * cos(s.m * j / 4.f)), s.n2) + pow(std::abs(1.f / s.b * sin(s.m * j / 4.f)), s.n3);
+           float r2 = pow(std::abs(raux2), (-1.f / s.n1));
           computeBuffer[veccount][0] = r1 * cos(i) * r2 * cos(j);
           computeBuffer[veccount][1] = r1 * sin(i) * r2 * cos(j);
           computeBuffer[veccount][2] = r2 * sin(j);
@@ -169,12 +170,12 @@ public:
     else
     {
       for (float i = float(-M_PI); i < M_PI; i += step)
-        for (float j = float(-M_PI / 2); j < M_PI / 2; j += step)
+        for (float j = float(-M_PI / 2.f); j < M_PI / 2.f; j += step)
         {
-          const float raux1 = pow(abs(1.f / s.a * cos(s.m * i / 4.f)), s.n2) + pow(abs(1.f / s.b * sin(s.m * i / 4.f)), s.n3);
-          const float r1 = pow(abs(raux1), (-1.f / s.n1));
-          const float raux2 = pow(abs(1.f / s.a * cos(s.m * j / 4.f)), s.n2) + pow(abs(1.f / s.b * sin(s.m * j / 4.f)), s.n3);
-          const float r2 = pow(abs(raux2), (-1.f / s.n1));
+          const float raux1 = pow(std::abs(1.f / s.a * cos(s.m * i / 4.f)), s.n2) + pow(std::abs(1.f / s.b * sin(s.m * i / 4.f)), s.n3);
+          const float r1 = pow(std::abs(raux1), (-1.f / s.n1));
+          const float raux2 = pow(std::abs(1.f / s.a * cos(s.m * j / 4.f)), s.n2) + pow(std::abs(1.f / s.b * sin(s.m * j / 4.f)), s.n3);
+          const float r2 = pow(std::abs(raux2), (-1.f / s.n1));
           computeBuffer[veccount][0] = r1 * cos(i) * r2 * cos(j);
           computeBuffer[veccount][1] = r1 * sin(i) * r2 * cos(j);
           computeBuffer[veccount][2] = r2 * sin(j);
@@ -193,58 +194,57 @@ public:
   virtual void keyPressed(unsigned char key)
   {
     bool invalidateMesh = false;
-    if (key == 0x1B) // Escape
+    if (key == 0x1B) // [Escape]
       wantExit = true;
-    if (key == 0x70) // F1
+    if (key == 43) // [+]
 	  {
 		  ++nStep;
 		  if(nStep > 9)
 			  nStep = 0;
       invalidateMesh = true;
     }
-    if (key == 0x71) // F2
+    if (key == 45) // [-]
       {invertCoordinate = !invertCoordinate; invalidateMesh = true;}
-    if (key == 0x72) // F3
+    if (key == 47) // [/]
       cullFace = !cullFace;
-    if (key == 0x73) // F4
+    if (key == 46) // [.]
       depthTest = !depthTest;
   #ifdef DOCGL4_1
-    if (key == 0x74) // F5
+    if (key == 48) // [0]
       invertColor = !invertColor;
   #endif // !DOCG4_1
-    if(key == 0x26) // Up
+    if(key == 56) // [8]
 	    objectFrame.rotateWorld(-5.0f, 1.0f, 0.0f, 0.0f);
-    if(key == 0x29) // down
+    if(key == 50) // [2]
 	    objectFrame.rotateWorld(5.0f, 1.0f, 0.0f, 0.0f);
-    if(key == 0x25) // left
+    if(key == 52) // [4]
 	    objectFrame.rotateWorld(-5.0f, 0.0f, 1.0f, 0.0f);
-    if(key == 0x27) // right
+    if(key == 54) // [6]
 	    objectFrame.rotateWorld(5.0f, 0.0f, 1.0f, 0.0f);
-    if (key == 'Q')
+    if (key == 'Q' || key == 'q')
       {superFormula3d.a = max(0.f, superFormula3d.a - 0.01f); invalidateMesh = true;}
-    else if (key == 'A')
+    else if (key == 'A' || key == 'a')
       {superFormula3d.a = min(3.f, superFormula3d.a + 0.01f); invalidateMesh = true;}
-    else if (key == 'S')
+    else if (key == 'S' || key == 's')
       {superFormula3d.b = max(0.f, superFormula3d.b - 0.01f); invalidateMesh = true;}
-    else if (key == 'Z')
+    else if (key == 'Z' || key == 'z')
       {superFormula3d.b = min(3.f, superFormula3d.b + 0.01f); invalidateMesh = true;}
-    else if (key == 'D')
+    else if (key == 'D' || key == 'd')
       {superFormula3d.m = max(0.f, superFormula3d.m - 0.1f); invalidateMesh = true;}
-    else if (key == 'E')
+    else if (key == 'E' || key == 'e')
       {superFormula3d.m = min(20.f, superFormula3d.m + 0.1f); invalidateMesh = true;}
-    else if (key == 'F')
+    else if (key == 'F' || key == 'f')
       {superFormula3d.n1 = max(0.f, superFormula3d.n1 - 0.1f); invalidateMesh = true;}
-    else if (key == 'R')
+    else if (key == 'R' || key == 'r')
       {superFormula3d.n1 = min(20.f, superFormula3d.n1 + 0.1f); invalidateMesh = true;}
-    else if (key == 'G')
+    else if (key == 'G' || key == 'g')
       {superFormula3d.n2 = max(0.f, superFormula3d.n2 - 0.1f); invalidateMesh = true;}
-    else if (key == 'T')
+    else if (key == 'T' || key == 't')
       {superFormula3d.n2 = min(20.f, superFormula3d.n2 + 0.1f); invalidateMesh = true;}
-    else if (key == 'H')
+    else if (key == 'H' || key == 'h')
       {superFormula3d.n3 = max(0.f, superFormula3d.n3 - 0.1f); invalidateMesh = true;}
-    else if (key == 'Y')
+    else if (key == 'Y' || key == 'y')
       {superFormula3d.n3 = min(20.f, superFormula3d.n3 + 0.1f); invalidateMesh = true;}
-
     if (invalidateMesh)
       constructSuperMesh(superFormula3d, invertCoordinate);
   }
@@ -252,6 +252,7 @@ public:
   virtual void resized(int w, int h)
   {
     context.getActiveViewport().setValue(docgl::GLRegion(w, h));
+    context.getActiveScissor().setValue(docgl::GLRegion(w, h));
     projectionMatrix = glm::perspective(35.0f, float(w) / float(h), 1.0f, 100.f);
   }
 
@@ -363,12 +364,12 @@ int superFormula(const char* szClassName, int x, int y, int width, int height)
   printf("[R]/[F] +-n1\n");
   printf("[T]/[G] +-n2\n");
   printf("[Y]/[H] +-n3\n");
-  printf("[F1] cicle primitives\n");
-  printf("[F2] cicle orientations\n");
-  printf("[F3] cull face on/off\n");
-  printf("[F4] depth test on/off\n");
+  printf("[+] cicle primitives\n");
+  printf("[-] cicle orientations\n");
+  printf("[/] cull face on/off\n");
+  printf("[.] depth test on/off\n");
 #ifdef DOCGL4_1
-  printf("[F5] invert color on/off\n");
+  printf("[0] invert color on/off\n");
 #endif // !DOCGL4_1
   printf("[ESC] exit\n");
 

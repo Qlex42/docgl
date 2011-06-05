@@ -6,7 +6,7 @@
 #include "Tools.h"
 #include <Docgl/DocglWindow.h>
 
-////////////////////////  OpenGL Context caching test ////////////////////////// 
+////////////////////////  OpenGL Context caching test //////////////////////////
 
 class ClientWithTooMuchRowByteAligmentChangeContext : public docgl::GLDirectContext
 {
@@ -34,7 +34,7 @@ public:
   docgl::GLCachedRegister<GLint> cachedPixelStoreUnPackRowByteAligment;
 };
 
-////////////////////////  Some VBO with shader tests ////////////////////////// 
+////////////////////////  Some VBO with shader tests //////////////////////////
 
 struct Globals : public OpenGLWindowCallback
 {
@@ -67,12 +67,12 @@ struct Globals : public OpenGLWindowCallback
 
   {
 
-    const GLfloat initvVerts[12] = {-blockSize - 0.5f, -blockSize, 0.0f, 
+    const GLfloat initvVerts[12] = {-blockSize - 0.5f, -blockSize, 0.0f,
                          blockSize - 0.5f, -blockSize, 0.0f,
                          blockSize - 0.5f,  blockSize, 0.0f,
                         -blockSize - 0.5f,  blockSize, 0.0f};
 
-    const GLfloat inittexCoord[8] = {0.0f, 0.0f, 
+    const GLfloat inittexCoord[8] = {0.0f, 0.0f,
                                      1.0f, 0.0f,
                                      1.0f, 1.0f,
                                      0.0f, 1.0f};
@@ -82,7 +82,7 @@ struct Globals : public OpenGLWindowCallback
   }
 
 ///////////////////////////////////////////////////////////////////////////////
-// This function does any needed initialization on the rendering context. 
+// This function does any needed initialization on the rendering context.
 // This is the first opportunity to do any OpenGL related tasks.
 void SetupRC()
 {
@@ -105,22 +105,22 @@ void SetupRC()
   jassert(succeed);
 
   // compile shader with attribute
-  static const GLchar* identityVertexShader = 
+  static const GLchar* identityVertexShader =
     "attribute vec4 vVertex;"
     "attribute vec2 vTexCoord0;"
     "varying vec2 vTex;"
 	  ""
     "void main(void) "
     "  {vTex = vTexCoord0; gl_Position = vVertex;}";
-									
-  static const GLchar* coloredTextureFragmentShader = 
+
+  static const GLchar* coloredTextureFragmentShader =
     "varying vec2 vTex;"
     "uniform sampler2D textureUnit0;"
     ""
     "void main(void) "
     "  {gl_FragColor = texture2D(textureUnit0, vTex);}";
 
-  static const GLchar* coloredFragmentShader = 
+  static const GLchar* coloredFragmentShader =
     "uniform vec4 vColor;"
     ""
     "void main(void) "
@@ -156,7 +156,7 @@ void SetupRC()
   //succeed = squareProgram1.setUniformValue(textureUnit0Location, 1, 1, &textureUnit).hasSucceed();
   succeed = squarePipeline.setProgramUniformValue(squareProgram1.getId(), textureUnit0Location, 1, 1, &textureUnit).hasSucceed();
   jassert(succeed);
-  
+
   // texture [red / green / cyan / magenta]
   docgl::GLPackedImage imageData;
   GLubyte buffer[2][2][4] = {{{255, 0, 0, 255}, {0, 255, 0, 255}}, {{0, 255, 255, 255}, {255, 0, 255, 255}}};
@@ -279,14 +279,14 @@ virtual void resized(int w, int h)
   }
 }
 
-  virtual void keyPressed(unsigned char key) 
+  virtual void keyPressed(unsigned char key)
   {
     bool invalidateMesh = false;
     if (key == 0x1B) // Escape
       wantExit = true;
   }
 
-  virtual void closed() 
+  virtual void closed()
     {wantExit = true;}
 };
 
@@ -309,12 +309,6 @@ int bounceMain(const char* szClassName, int x, int y, int width, int height)
     return 2;
   }
 
-
-  if (g.context.initialize().hasErrors())
-  {
-    fprintf(stderr, "GLContext initialize error\n");
-    return 2;
-  }
   // show environment
   printf("GL vendor: %s\n", g.context.getVendorName());
   printf("GL render: %s\n", g.context.getRenderName());
@@ -325,16 +319,16 @@ int bounceMain(const char* szClassName, int x, int y, int width, int height)
   printf("Texture Units count: %u\n", g.context.getNumTextureUnits());
   printf("Vertex attributes count: %u\n", g.context.getNumVertexAttributes());
   printf("Max texture size: %u\n", g.context.getMaxTextureSize());
-  printf("Points [%f, %f] +- %f\n", g.context.getPointSmallestSize(), 
-                                    g.context.getPointLargestSize(), 
+  printf("Points [%f, %f] +- %f\n", g.context.getPointSmallestSize(),
+                                    g.context.getPointLargestSize(),
                                     g.context.getPointSizeGranularity());
 
   printf("Max viewport dimensions: %u, %u\n", g.context.getMaxViewportWidth(), g.context.getMaxViewportHeight());
 
   // show hits
-  printf("Hints: %u, %u, %u, %u\n", g.context.getLineSmoothHint().isDefaultValue(), 
-                                    g.context.getPolygonSmoothHint().isDefaultValue(), 
-                                    g.context.getTextureCompressionQualityHint().isDefaultValue(), 
+  printf("Hints: %u, %u, %u, %u\n", g.context.getLineSmoothHint().isDefaultValue(),
+                                    g.context.getPolygonSmoothHint().isDefaultValue(),
+                                    g.context.getTextureCompressionQualityHint().isDefaultValue(),
                                     g.context.getFragmentShaderDerivativeAccuracyHint().isDefaultValue());
 
   jassert(g.context.getPointSizeProgrammable().isDefaultValue());
@@ -347,21 +341,21 @@ int bounceMain(const char* szClassName, int x, int y, int width, int height)
 
   for (int i = 0; i < 4; ++i)
   {
-    docgl::GLErrorFlags errorflags = textureObject.create2D(GL_RGBA8, textureSize, textureSize, &imageData); 
+    docgl::GLErrorFlags errorflags = textureObject.create2D(GL_RGBA8, textureSize, textureSize, &imageData);
     if (errorflags.hasSucceed())
     {
       textureObject.setMinificationFilter(GL_LINEAR);
       printf("Texture:%i dimension:%ix%i msaa:%i fmt:0x%04X\n", i, textureObject.getWidth(), textureObject.getHeight(), textureObject.getNumSamplesPerTexel(), textureObject.getInternalFormat());
       printf("stencil component size: %i compressed:%i texture depth:%i\n", textureObject.getNumBitsForStencil(), textureObject.isCompressed(), textureObject.getDepth());
       textureObject.destroy();
-    } 
+    }
     else
       jassertfalse;
     GLubyte* data = (GLubyte*)imageData.data;
     data[0]++;
   }
   destroyPackedImage(imageData);
-  
+
   g.SetupRC();
 
   EventDispatcher dispatcher(&window, 1);

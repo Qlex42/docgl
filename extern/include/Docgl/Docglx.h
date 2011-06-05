@@ -44,6 +44,12 @@ struct OpenGLXWindow
         fprintf(stderr, "ERROR: unsupported GLX function glXGetVisualFromFBConfig\n");
         return False;
       }
+//      glXMakeContextCurrent = (Bool(*)(Display *display, GLXDrawable draw, GLXDrawable read, GLXContext shareContext))glXGetProcAddressARB((GLubyte*)"glXMakeContextCurrent");
+//      if (!glXMakeContextCurrent)
+//      {
+//        fprintf(stderr, "ERROR: unsupported GLX function glXGetVisualFromFBConfig\n");
+//        return False;
+//      }
       fnPointersInitialized = True;
     }
     return True;
@@ -155,7 +161,7 @@ struct OpenGLXWindow
       XCloseDisplay(display);
       return False;
     }
-    if (!glXMakeCurrent(display, window, glxContext))
+    if (!glXMakeCurrent(display, window, glxContext)) // TODO check if glXMakeContextCurrent is better */
     {
       fprintf(stderr, "ERROR: glXMakeCurrent failure\n");
       XDestroyWindow(display, window);
@@ -221,7 +227,16 @@ struct OpenGLXWindow
       windowCallback->mouseMove(newEvent.xmotion.x, newEvent.xmotion.y);
       break;
     case KeyPress:
-      windowCallback->keyPressed(0 /*TODO compute code*/);
+      {
+        XKeyEvent* keyEvent = (XKeyEvent*)&newEvent.xkey;
+        char utf8[64];
+        memset(utf8, 0, sizeof(utf8));
+        KeySym sym;
+        XLookupString (keyEvent, utf8, sizeof(utf8), &sym, 0);
+        unsigned int keyCode = utf8[0];
+        if (keyCode & 0xffu)
+          windowCallback->keyPressed(keyCode & 0xffu);
+      }
       break;
     case ClientMessage:
       {

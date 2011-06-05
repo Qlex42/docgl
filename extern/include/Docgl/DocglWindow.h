@@ -131,19 +131,20 @@ public:
                     GLX_RED_SIZE,      8,
                     GLX_BLUE_SIZE,     8,
                     GLX_GREEN_SIZE,    8,
+                    GLX_DEPTH_SIZE,    16,
                     None};
-    // ALEX: understand why 3.3 do not work with GTX295/Ubuntu32 11.04 (with or without unity window manager)
-    // read http://www.opengl.org/registry/specs/ARB/glx_create_context.txt
+
     static const int context_attrib_list[] = {
       GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-      GLX_CONTEXT_MINOR_VERSION_ARB, 1,
+      GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+      GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
       0};
 
     // Setup X window and GLX context
     if (!window.create(windowCallback, NULL, width, height, config_attrib_list, context_attrib_list, NULL))
     {
       fprintf(stderr, "Error: could not create window\n");
-      return 1;
+      return false;
     }
     return true;
   }
