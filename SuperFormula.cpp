@@ -146,11 +146,9 @@ public:
     }
   }
 
-
-
   void constructSuperMesh(const SuperFormula3D& s, bool invertCoordinate)
   {
-    static GLfloat computeBuffer[superFormulaNumVertices][3];
+    GLfloat computeBuffer[superFormulaNumVertices][3];
     int veccount = 0;
     if (invertCoordinate)
     {
