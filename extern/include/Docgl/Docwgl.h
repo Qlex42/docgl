@@ -272,7 +272,7 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
         window->windowCallback->closed();
     }
     return 0;
-  case WM_KEYDOWN:
+  case WM_CHAR:
     {
       docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
       if (window && window->windowCallback)
