@@ -159,110 +159,6 @@ const GLErrorFlags GLErrorFlags::succeed;
 
 //////////////////////////////////////////////////////////////////////////////
 
-class GLContext; // predeclaration
-template <typename GLPropertyType>
-class GLProperty
-{
-public:
-  typedef GLPropertyType GLType;
-
-  GLProperty(GLContext& context)
-    : context(context) {}
-  virtual ~GLProperty() {}
-
-  // Warning: can produce OpenGL flushing performance penalty
-  virtual GLErrorFlags getValue(GLType& value) const = 0;
-
-  // methods
-  virtual GLType getDefaultValue() const
-    {return GLType(0);}
-
-  bool isDefaultValue() const // Warning: can produce OpenGL flushing performance penalty
-  {
-    GLType value;
-    if (getValue(value).hasErrors())
-      return false;
-    return getDefaultValue() == value;
-  }
-
-  GLContext& getContext() const
-    {return context;}
-
-# ifdef GLEW_MX
-  GLEWContext* glewGetContext() const
-    {return context.glewGetContext();}
-# endif // GLEW_MX
-
-protected:
-  GLContext& context;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-
-template <typename GLRegisterType>
-class GLRegister : public GLProperty<GLRegisterType>
-{
-public:
-  typedef GLRegisterType GLType;
-   // construction
-  GLRegister(GLContext& context)
-    : GLProperty<GLRegisterType>(context) {}
-
-  // interface
-  virtual GLErrorFlags setValue(const GLType& value) = 0;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-
-template <typename GLCachedRegisterType>
-class GLCachedRegister : public GLRegister<GLCachedRegisterType>
-{
-  typedef GLCachedRegisterType GLType;
-  typedef GLRegister<GLType> GLRegisterType;
-
-public:
-  GLCachedRegister(GLRegisterType& decorated)
-    : GLRegister<GLType>(decorated.getContext())
-    , decorated(decorated)
-    , currentValue(decorated.getDefaultValue())
-    {}
-
-  virtual GLErrorFlags getValue(GLType& value) const
-  {
-    value = currentValue;
-    return GLErrorFlags::succeed;
-  }
-
-  // interface
-  virtual GLErrorFlags setValue(const GLType& value)
-  {
-    if (value == currentValue)
-      return GLErrorFlags::succeed;
-    const GLErrorFlags errorFlags = decorated.setValue(value);
-    if (errorFlags.hasSucceed())
-      currentValue = value;
-    return errorFlags;
-  }
-
-  // last chance methods: Warning: can produce OpenGL flushing performance penalty
-  // if return false, ensure GLCachedRegister construction have been done just after OpenGL context creation.
-  bool isConsistent() const
-  {
-    GLType value;
-    if (decorated.getValue(value).hasErrors())
-      return false;
-    return value == currentValue;
-  }
-  GLErrorFlags makeConsistent() const
-    {return decorated.getValue(currentValue);}
-
-protected:
-  GLRegisterType& decorated;
-  GLType currentValue;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-
 struct GLColor
 {
   enum {
@@ -457,6 +353,12 @@ struct GLPolygonOffset
 
 //////////////////////////////////////////////////////////////////////////////
 
+// Predeclaration
+template <typename GLPropertyType>
+class GLProperty;
+template <typename GLRegisterType>
+class GLRegister;
+
 class GLContext
 {
 public:
@@ -570,6 +472,108 @@ public:
 #  define jassertglsucceed(context)
 # endif // ! defined(DEBUG) || defined(_DEBUG)
 
+//////////////////////////////////////////////////////////////////////////////
+
+template <typename GLPropertyType>
+class GLProperty
+{
+public:
+  typedef GLPropertyType GLType;
+
+  GLProperty(GLContext& context)
+    : context(context) {}
+  virtual ~GLProperty() {}
+
+  // Warning: can produce OpenGL flushing performance penalty
+  virtual GLErrorFlags getValue(GLType& value) const = 0;
+
+  // methods
+  virtual GLType getDefaultValue() const
+    {return GLType(0);}
+
+  bool isDefaultValue() const // Warning: can produce OpenGL flushing performance penalty
+  {
+    GLType value;
+    if (getValue(value).hasErrors())
+      return false;
+    return getDefaultValue() == value;
+  }
+
+  GLContext& getContext() const
+    {return context;}
+
+# ifdef GLEW_MX
+  GLEWContext* glewGetContext() const
+    {return context.glewGetContext();}
+# endif // GLEW_MX
+
+protected:
+  GLContext& context;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+
+template <typename GLRegisterType>
+class GLRegister : public GLProperty<GLRegisterType>
+{
+public:
+  typedef GLRegisterType GLType;
+   // construction
+  GLRegister(GLContext& context)
+    : GLProperty<GLRegisterType>(context) {}
+
+  // interface
+  virtual GLErrorFlags setValue(const GLType& value) = 0;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+
+template <typename GLCachedRegisterType>
+class GLCachedRegister : public GLRegister<GLCachedRegisterType>
+{
+  typedef GLCachedRegisterType GLType;
+  typedef GLRegister<GLType> GLRegisterType;
+
+public:
+  GLCachedRegister(GLRegisterType& decorated)
+    : GLRegister<GLType>(decorated.getContext())
+    , decorated(decorated)
+    , currentValue(decorated.getDefaultValue())
+    {}
+
+  virtual GLErrorFlags getValue(GLType& value) const
+  {
+    value = currentValue;
+    return GLErrorFlags::succeed;
+  }
+
+  // interface
+  virtual GLErrorFlags setValue(const GLType& value)
+  {
+    if (value == currentValue)
+      return GLErrorFlags::succeed;
+    const GLErrorFlags errorFlags = decorated.setValue(value);
+    if (errorFlags.hasSucceed())
+      currentValue = value;
+    return errorFlags;
+  }
+
+  // last chance methods: Warning: can produce OpenGL flushing performance penalty
+  // if return false, ensure GLCachedRegister construction have been done just after OpenGL context creation.
+  bool isConsistent() const
+  {
+    GLType value;
+    if (decorated.getValue(value).hasErrors())
+      return false;
+    return value == currentValue;
+  }
+  GLErrorFlags makeConsistent() const
+    {return decorated.getValue(currentValue);}
+
+protected:
+  GLRegisterType& decorated;
+  GLType currentValue;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 

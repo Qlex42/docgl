@@ -175,11 +175,19 @@ struct OpenGLXWindow
     {
         /* Problem: glewInit failed, something is seriously wrong. */
       fprintf(stderr, "Error: glewInit failure %u: %s\n", err, glewGetErrorString(err));
-      glXMakeCurrent(display, None, NULL);
-      XDestroyWindow(display, window);
-      XCloseDisplay(display);
+      destroy();
       return False;
     }
+
+# ifdef GLEW_MX
+    err = glxewContextInit(glxewGetContext());
+    if (GLEW_OK != err)
+    {
+      fprintf(stderr, "Error: glxewContextInit failure %u: %s\n", err, glewGetErrorString(err));
+      destroy();
+      return False;
+    }
+#endif // GLEW_MX
     return True;
   }
 
@@ -255,6 +263,19 @@ struct OpenGLXWindow
     }
   }
 
+ OpenGLXWindow(docgl::GLContext& context)
+    : context(context) {}
+
+# ifdef GLEW_MX
+  GLXEWContext glxewContext;
+  GLXEWContext* glxewGetContext() const
+    {return const_cast<struct GLXEWContextStruct*>(&glxewContext);}
+
+  GLEWContext* glewGetContext() const
+    {return context.glewGetContext();}
+# endif  //GLEW_MX
+
+  docgl::GLContext& context;
   GLXContext glxContext;
   Display* display;
   Window window;

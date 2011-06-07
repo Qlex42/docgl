@@ -11,20 +11,20 @@
 extern int bounceMain(const char* szClassName, int x, int y, int width, int height);
 extern int superFormula(const char* szClassName, int x, int y, int width, int height);
 
-#ifdef GLEW_MX
+#if defined(GLEW_MX) && defined(WIN32)
 DWORD WINAPI threadedMain(LPVOID lpThreadParameter)
   {return superFormula("OGL_THREADED_CLASS", 50, 50, 800, 600);}
 #endif // GLEW_MX
 
 int main()
 {
-#ifdef GLEW_MX
+#if defined(GLEW_MX) && defined(WIN32)
   HANDLE thread = CreateThread(NULL, 0, threadedMain, NULL, 0, NULL); // launch threaded window
   Sleep(1000);
 #endif // GLEW_MX
   int ret = superFormula("OGL_CLASS", 0, 0, 800, 600);  // launch current thread window
 
-#ifdef GLEW_MX
+#if defined(GLEW_MX) && defined(WIN32)
   WaitForSingleObject(thread, INFINITE);    // wait end of threaded window thread
   CloseHandle(thread);
 #endif //GLEW_MX

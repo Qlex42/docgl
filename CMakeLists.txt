@@ -11,6 +11,9 @@ PROJECT(docgl CXX C)
 OPTION(DOCGL_MULTICONTEXT "MultiContext" OFF)
 IF (DOCGL_MULTICONTEXT)
   ADD_DEFINITIONS(-DGLEW_MX)
+  IF   (UNIX) # g++ does'nt like implicite access to glew context from template.
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+  ENDIF(UNIX)
 ENDIF (DOCGL_MULTICONTEXT)
 
 OPTION(DOCGL4_1 "OpenGL 4.1 Sample" OFF)
@@ -116,7 +119,7 @@ SET(GLEW_SOURCES extern/src/GL/glew.c)
 
 IF   (WIN32)
   SET(DOCGL_PLATEFORM_SOURCES extern/include/Docgl/Docwgl.h)
-  SET(OPENGLIBS opengl32)  
+  SET(OPENGLIBS opengl32)
 ELSE (WIN32)
   IF (UNIX)
     SET(DOCGL_PLATEFORM_SOURCES extern/include/Docgl/Docglx.h)

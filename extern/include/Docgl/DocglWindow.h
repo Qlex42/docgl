@@ -120,7 +120,8 @@ struct OpenGLWindow
 {
 public:
   OpenGLWindow(docgl::GLContext& context)
-    : window() {}
+    : window(context) {}
+
   bool create(OpenGLWindowCallback& windowCallback, int x, int y, int width, int height, const char* className)
   {
     static const int config_attrib_list[] = {
