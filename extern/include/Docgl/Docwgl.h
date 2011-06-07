@@ -8,8 +8,10 @@
 
 # include <Docgl/Docgl.h>
 # include <Docgl/DocglWindowCallback.h>
+
+# define NOMINMAX // avoid mix max macro polluting namespace
 # include <gl\wglew.h>
-# include <Windowsx.h>
+# include <Windowsx.h> // for GET_X_LPARAM && GET_Y_LPARAM
 
 namespace docwgl
 {
