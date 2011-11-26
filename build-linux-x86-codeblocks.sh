@@ -5,6 +5,6 @@ cd        build/linux-x86-codeblocks
 export LDFLAGS=-m32
 export CXXFLAGS=-m32
 export CFLAGS=-m32
-ccmake -G"CodeBlocks - Unix Makefiles" -DCMAKE_BUILD_ARCH=32 ../..
+ccmake -G"CodeBlocks - Unix Makefiles" ../..
 codeblocks docgl.cbp &
 cd ../..

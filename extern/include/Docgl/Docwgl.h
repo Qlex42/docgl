@@ -254,7 +254,7 @@ static LRESULT CALLBACK windowMessageProcedure(HWND	hWnd, UINT uMsg, WPARAM	wPar
   switch(uMsg)
   {
   case WM_ERASEBKGND:
-    return 0; // http://www.opengl.org/pipeline/article/vol003_7/ avoid GDI clearing the OpenGL windows background
+    return 1; // http://www.opengl.org/pipeline/article/vol003_7/ avoid GDI clearing the OpenGL windows background
   case WM_SIZE:
     {
       docwgl::OpenWGLWindow* window = docwgl::OpenWGLWindow::getOpenWGLWindow(hWnd);
