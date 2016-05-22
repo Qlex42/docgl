@@ -5,6 +5,7 @@
 # --------------------------------- . ---------------------------------------- #
 
 cmake_minimum_required(VERSION 3.1)
+SET(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo CACHE TYPE INTERNAL FORCE)
 
 PROJECT(docgl CXX C)
 
@@ -17,13 +18,10 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    <SOURCE_DIR>/glm ${CMAKE_BINARY_DIR}/extern/include/glm
+                    <SOURCE_DIR>/glm ${docgl_SOURCE_DIR}/extern/include/glm
     LOG_DOWNLOAD ON
     LOG_INSTALL ON
     )
-
-ExternalProject_Get_Property(glm source_dir)
-set(GlmIncludeDir ${source_dir})
 
 OPTION(DOCGL_MULTICONTEXT "MultiContext" OFF)
 IF (DOCGL_MULTICONTEXT)
@@ -58,7 +56,6 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(
   ${EXTERN_PATH}/include
-  ${GlmIncludeDir}
 )
 
 IF   (WIN32)
