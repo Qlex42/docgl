@@ -50,8 +50,11 @@
 # ifdef linux
 #  include <GL/glew.h>
 #  include <csignal> /* for sigtrap */
-#  include <cstring> /** for memcpy*/
 # endif // !linux
+
+# ifdef __GNUC__
+#  include <cstring> /** for memcpy*/
+# endif // __GNUC__
 
 # if defined(DEBUG) || defined(_DEBUG)
 #  ifndef jassertfalse

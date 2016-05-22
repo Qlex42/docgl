@@ -26,10 +26,14 @@ ExternalProject_Add(
 OPTION(DOCGL_MULTICONTEXT "MultiContext" OFF)
 IF (DOCGL_MULTICONTEXT)
   ADD_DEFINITIONS(-DGLEW_MX)
-  IF   (UNIX) # g++ does'nt like implicite access to glew context from template.
+   # g++ does'nt like implicite access to glew context from template.: todo fixme
+  IF (UNIX)
     SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
   ENDIF(UNIX)
-ENDIF (DOCGL_MULTICONTEXT)
+  IF (MINGW)
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+  ENDIF(MINGW)
+  ENDIF (DOCGL_MULTICONTEXT)
 
 OPTION(DOCGL4_1 "OpenGL 4.1 Sample" OFF)
 IF (DOCGL4_1)
@@ -42,10 +46,17 @@ SET(EXTERN_PATH ${docgl_SOURCE_DIR}/extern CACHE PATH "extern directory" FORCE)
 MARK_AS_ADVANCED(EXTERN_PATH)
 
 IF   (WIN32)
+  ADD_DEFINITIONS(-DNOMINMAX) # avoid mix max macro polluting namespace
+  IF (MINGW)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -msse2")
+    ADD_DEFINITIONS(-DWIN32) # do as visual does
+  ENDIF (MINGW)
 ELSE (WIN32)
   IF   (UNIX)
     IF   (APPLE)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     ELSE (APPLE)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -msse2")
       ADD_DEFINITIONS(-DLINUX)
       IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
         ADD_DEFINITIONS(-D_DEBUG)
