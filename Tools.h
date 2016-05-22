@@ -5,7 +5,6 @@
 ` --------------------------------- . --------------------------------------- */
 # include <Docgl/Docgl.h>
 
-# define GLM_SWIZZLE_XYZW // for .xyz
 # include <glm/glm.hpp> //vec3, vec4, ivec4, mat4
 # include <glm/gtc/matrix_transform.hpp> //translate, rotate, scale, perspective
 # include <cstdio> // for printf
@@ -218,8 +217,10 @@ struct Frame
   {
     // Create the Rotation matrix
     glm::mat4 rotMat = glm::rotate(glm::mat4(1), angle, glm::vec3(x, y, z));
-    up = (glm::vec4(up, 0) * rotMat).xyz;
-    forward = (glm::vec4(forward, 0) * rotMat).xyz;
+    glm::vec4 res = glm::vec4(up, 0) * rotMat;
+    up = glm::vec3(res.x, res.y, res.z);
+    res = glm::vec4(forward, 0) * rotMat;
+    forward = glm::vec3(res.x, res.y, res.z);
   }
 
   // Assemble the camera matrix

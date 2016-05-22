@@ -4,9 +4,26 @@
 # Started  : 26/05/2011 14:00       |                                          #
 # --------------------------------- . ---------------------------------------- #
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.1)
 
 PROJECT(docgl CXX C)
+
+include(ExternalProject)
+ExternalProject_Add(
+    glm
+    PREFIX ${CMAKE_BINARY_DIR}/glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 0.9.7.4
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    <SOURCE_DIR>/glm ${CMAKE_BINARY_DIR}/extern/include/glm
+    LOG_DOWNLOAD ON
+    LOG_INSTALL ON
+    )
+
+ExternalProject_Get_Property(glm source_dir)
+set(GlmIncludeDir ${source_dir})
 
 OPTION(DOCGL_MULTICONTEXT "MultiContext" OFF)
 IF (DOCGL_MULTICONTEXT)
@@ -39,26 +56,9 @@ ELSE (WIN32)
   ENDIF(UNIX)
 ENDIF(WIN32)
 
-IF (MSVC)
-  OPTION(DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY "Debug Purify compatibility" OFF)
-ENDIF (MSVC)
-
-IF (DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY)
-  #do not forgot to add /allow_setwindowshook to Purify Files Additional options.
-  STRING(REPLACE "INCREMENTAL:YES" "INCREMENTAL:NO" replacementFlags ${CMAKE_EXE_LINKER_FLAGS_DEBUG})
-  SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "/INCREMENTAL:NO ${replacementFlags}")
-  SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /FIXED:NO")
-
-  STRING(REPLACE "INCREMENTAL:YES" "INCREMENTAL:NO" replacementFlags ${CMAKE_MODULE_LINKER_FLAGS_DEBUG})
-  SET(CMAKE_MODULE_LINKER_FLAGS_DEBUG "/INCREMENTAL:NO ${replacementFlags}")
-  SET(CMAKE_MODULE_LINKER_FLAGS_DEBUG "${CMAKE_MODULE_LINKER_FLAGS_DEBUG} /FIXED:NO")
-
-  STRING(REPLACE "/RTC1" "" replacementFlags ${CMAKE_CXX_FLAGS_DEBUG})
-  SET(CMAKE_CXX_FLAGS_DEBUG "${replacementFlags}")
-ENDIF (DOCGL_DEBUG_COMPATIBILE_WITH_PUFIRY)
-
 INCLUDE_DIRECTORIES(
   ${EXTERN_PATH}/include
+  ${GlmIncludeDir}
 )
 
 IF   (WIN32)
@@ -193,7 +193,9 @@ MACRO(ADD_APPLICATION NAME LABEL)
 ENDMACRO(ADD_APPLICATION)
 
 ADD_APPLICATION(SuperFormula "SuperFormula" ${SUPERFORMULA_SOURCES})
-#ADD_APPLICATION(Bounce "Bounce" ${BOUNCE_SOURCES})
-
+add_dependencies(SuperFormula glm)
 INSTALL(TARGETS SuperFormula DESTINATION bin)
+
+#ADD_APPLICATION(Bounce "Bounce" ${BOUNCE_SOURCES})
+#add_dependencies(Bounce glm)
 #INSTALL(TARGETS Bounce DESTINATION bin)

@@ -209,13 +209,13 @@ public:
       invertColor = !invertColor;
   #endif // !DOCG4_1
     if(key == 56) // [8]
-	    objectFrame.rotateWorld(-5.0f, 1.0f, 0.0f, 0.0f);
+	    objectFrame.rotateWorld(-5.0f / 360.f * (float)M_PI, 1.0f, 0.0f, 0.0f);
     if(key == 50) // [2]
-	    objectFrame.rotateWorld(5.0f, 1.0f, 0.0f, 0.0f);
+	    objectFrame.rotateWorld(5.0f / 360.f * (float)M_PI, 1.0f, 0.0f, 0.0f);
     if(key == 52) // [4]
-	    objectFrame.rotateWorld(-5.0f, 0.0f, 1.0f, 0.0f);
+	    objectFrame.rotateWorld(-5.0f / 360.f * (float)M_PI, 0.0f, 1.0f, 0.0f);
     if(key == 54) // [6]
-	    objectFrame.rotateWorld(5.0f, 0.0f, 1.0f, 0.0f);
+	    objectFrame.rotateWorld(5.0f / 360.f * (float)M_PI, 0.0f, 1.0f, 0.0f);
     if (key == 'Q' || key == 'q')
       {superFormulaParameters.a = std::max(0.f, superFormulaParameters.a - 0.01f); invalidateMesh = true;}
     else if (key == 'A' || key == 'a')
@@ -248,7 +248,7 @@ public:
   {
     context.getActiveViewport().setValue(docgl::GLRegion(w, h));
     //context.getActiveScissor().setValue(docgl::GLRegion(w, h));
-    projectionMatrix = glm::perspective(35.0f, float(w) / float(h), 1.0f, 100.f);
+    projectionMatrix = glm::perspective(35.0f / 360.f * (float)M_PI, float(w) / float(h), 1.0f, 100.f);
   }
 
   virtual void closed()
@@ -257,7 +257,7 @@ public:
   void SetupRC()
   {
     context.getClearColor().setValue(docgl::GLColor(0.7f, 0.7f, 0.7f, 1.0f));
-	  cameraFrame.moveForward(-6.0f);
+	  cameraFrame.moveForward(-10.0f);
     bool succeed = vertexArray.create().hasSucceed();
     jassert(succeed);
     constructSuperMesh(superFormulaParameters, invertCoordinate);

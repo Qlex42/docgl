@@ -318,7 +318,7 @@ int bounceMain(const char* szClassName, int x, int y, int width, int height)
   // show some limits
   printf("Texture Units count: %u\n", g.context.getNumTextureUnits());
   printf("Vertex attributes count: %u\n", g.context.getNumVertexAttributes());
-  printf("Max texture size: %u\n", g.context.getMaxTextureSize());
+  printf("Max texture size: %zu\n", g.context.getMaxTextureSize());
   printf("Points [%f, %f] +- %f\n", g.context.getPointSmallestSize(),
                                     g.context.getPointLargestSize(),
                                     g.context.getPointSizeGranularity());
@@ -358,7 +358,8 @@ int bounceMain(const char* szClassName, int x, int y, int width, int height)
 
   g.SetupRC();
 
-  EventDispatcher dispatcher(&window, 1);
+  OpenGLWindow* windowsLists = &window;
+  EventDispatcher dispatcher(&windowsLists, 1);
   do
   {
     if (!dispatcher.dispatchNextEvent())
