@@ -48,8 +48,7 @@ MARK_AS_ADVANCED(EXTERN_PATH)
 IF   (WIN32)
   ADD_DEFINITIONS(-DNOMINMAX) # avoid mix max macro polluting namespace
   IF (MINGW)
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -msse2")
-    ADD_DEFINITIONS(-DWIN32) # do as visual does
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -msse2")
   ENDIF (MINGW)
 ELSE (WIN32)
   IF   (UNIX)
