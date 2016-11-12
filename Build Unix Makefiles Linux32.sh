@@ -5,11 +5,11 @@ export CXXFLAGS=-m32
 export CFLAGS=-m32
 mkdir -p "build/Unix Makefiles Linux32/debug"
 cd        "build/Unix Makefiles Linux32/debug"
-../../../extern/bin/linux-x86/cmake/bin/ccmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE:String=Debug ../../.. 
+ccmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE:String=Debug ../../.. 
 make -j 8
 cd ../../..
 mkdir -p "build/Unix Makefiles Linux32/release"
 cd       "build/Unix Makefiles Linux32/release"
-../../../extern/bin/linux-x86/cmake/bin/ccmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE:String=Release ../../..
+ccmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE:String=Release ../../..
 make -j 8
 cd ../../..

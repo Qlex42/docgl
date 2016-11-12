@@ -47,10 +47,10 @@
 #  include <OpenGL/gl.h>		// Apple OpenGL haders (version depends on OS X SDK version)
 # endif // !__APPLE__
 
-# ifdef linux
+# ifdef __linux__
 #  include <GL/glew.h>
 #  include <csignal> /* for sigtrap */
-# endif // !linux
+# endif // !__linux__
 
 # ifdef __GNUC__
 #  include <cstring> /** for memcpy*/
@@ -68,7 +68,7 @@
 #    endif // !_MSC_VER
 #   elif __APPLE__
 #     define jassertfalse Debugger();
-#   elif linux
+#   elif __linux__
 #     define jassertfalse kill (0, SIGTRAP);
 #   endif // !WIN32
 #  endif // jassertfalse

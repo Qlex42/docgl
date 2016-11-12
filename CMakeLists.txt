@@ -4,7 +4,7 @@
 # Started  : 26/05/2011 14:00       |                                          #
 # --------------------------------- . ---------------------------------------- #
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.8)
 SET(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo CACHE TYPE INTERNAL FORCE)
 
 PROJECT(docgl CXX C)

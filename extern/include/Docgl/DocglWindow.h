@@ -112,7 +112,7 @@ public:
 
 # else // !WIN32
 
-#  ifdef linux
+#  ifdef __linux__
 
 #   include "Docglx.h"
 
