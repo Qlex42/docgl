@@ -296,6 +296,27 @@ static GLboolean _glewStrSame3 (const GLubyte** a, GLuint* na, const GLubyte* b,
   return GL_FALSE;
 }
 
+#ifdef GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+typedef void (GLAPIENTRY * PFNGLGETINTEGERVPROC) (GLenum pname, GLint *params);
+
+static GLboolean _dlabsSearchExtension(PFNGLGETINTEGERVPROC getIntegerv, PFNGLGETSTRINGIPROC getStringi, const char* name)
+{
+  GLuint len = 0;
+  GLint n = 0;
+  GLint i = 0;
+  getIntegerv(GL_NUM_EXTENSIONS, &n);
+  len = _glewStrLen((const GLubyte*)name);
+  for (i = 0; i < n; ++i)
+  {
+    const GLubyte* p = getStringi(GL_EXTENSIONS, i);
+    GLuint l = _glewStrLen(p);
+    if (len == l && _glewStrSame((const GLubyte*)name, p, len))
+      return GL_TRUE;
+  }
+  return GL_FALSE;
+}
+#endif // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH  D/LABS
+
 /*
  * Search for name in the extensions string. Use of strstr()
  * is not sufficient because extension names can be prefixes of
@@ -9293,6 +9314,11 @@ GLenum GLEWAPIENTRY glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
   GLint major, minor;
   const GLubyte* extStart;
   const GLubyte* extEnd;
+#ifdef GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+  PFNGLGETINTEGERVPROC _dlabsGetIntegerv;
+  PFNGLGETSTRINGIPROC _dlabsGetStringi;
+#endif // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+
   /* query opengl version */
   s = glGetString(GL_VERSION);
   dot = _glewStrCLen(s, '.');
@@ -9334,11 +9360,37 @@ GLenum GLEWAPIENTRY glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
     GLEW_VERSION_1_1   = GLEW_VERSION_1_2   == GL_TRUE || ( major == 1 && minor >= 1 ) ? GL_TRUE : GL_FALSE;
   }
 
+#ifdef GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+  if (GLEW_VERSION_3_0)
+  {
+#ifdef _WIN32
+    _dlabsGetIntegerv = glGetIntegerv;
+#else
+    _dlabsGetIntegerv = (PFNGLGETINTEGERVPROC)glewGetProcAddress((const GLubyte*)"glGetIntegerv");
+#endif
+
+    if (!_dlabsGetIntegerv)
+      // FATAL ERROR !!!
+      return GLEW_ERROR_NO_GL_VERSION;
+
+    /* glGetStringi is OpenGL 3.0 */
+    _dlabsGetStringi = (PFNGLGETSTRINGIPROC)glewGetProcAddress((const GLubyte*)"glGetStringi");
+    if (!_dlabsGetStringi)
+      // FATAL ERROR !!!
+      return GLEW_ERROR_NO_GL_VERSION;
+  }
+  else
+  {
+    // smode minimal opengl version is 3.3
+    return GLEW_ERROR_NO_GL_VERSION;
+  }
+#else // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH D/LABS
   /* query opengl extensions string */
   extStart = glGetString(GL_EXTENSIONS);
   if (extStart == 0)
     extStart = (const GLubyte*)"";
   extEnd = extStart + _glewStrLen(extStart);
+#endif // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH D/LABS
 
   /* initialize extensions */
 #ifdef GL_VERSION_1_2
@@ -9387,6 +9439,11 @@ GLenum GLEWAPIENTRY glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
 #ifdef GL_VERSION_4_5
   if (glewExperimental || GLEW_VERSION_4_5) GLEW_VERSION_4_5 = !_glewInit_GL_VERSION_4_5(GLEW_CONTEXT_ARG_VAR_INIT);
 #endif /* GL_VERSION_4_5 */
+
+#ifdef GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+  (void) extStart; (void)extEnd;
+#define _glewSearchExtension(name, start, end) _dlabsSearchExtension(_dlabsGetIntegerv,_dlabsGetStringi, name)
+#endif // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH D/LABS
 #ifdef GL_3DFX_multisample
   GLEW_3DFX_multisample = _glewSearchExtension("GL_3DFX_multisample", extStart, extEnd);
 #endif /* GL_3DFX_multisample */
@@ -11357,6 +11414,10 @@ GLenum GLEWAPIENTRY glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
   GLEW_WIN_swap_hint = _glewSearchExtension("GL_WIN_swap_hint", extStart, extEnd);
   if (glewExperimental || GLEW_WIN_swap_hint) GLEW_WIN_swap_hint = !_glewInit_GL_WIN_swap_hint(GLEW_CONTEXT_ARG_VAR_INIT);
 #endif /* GL_WIN_swap_hint */
+
+#ifdef GLEW_DLABS_FORWARD_COMPATIBLE_PATCH // D/LABS
+#undef _glewSearchExtension
+#endif // GLEW_DLABS_FORWARD_COMPATIBLE_PATCH D/LABS
 
   return GLEW_OK;
 }
